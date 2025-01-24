@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title id='title'>PRODUCTION - Cryptocurrency Data Chart</title>
+    <!-- papaparse v5.3.1 -->
+    <script src="libraries/papaparse.js"></script>
+    <!-- plotly.js v1.58.5 -->
+    <script src="libraries/plotly.js"></script>
+
+    <style>
+        .hideMe { display:none; }
+
+        .cont1 {
+            position:fixed;
+            z-index:9;
+            width:100%;
+            height:100%;
+        }
+
+        p {
+            z-index:5;
+            position: absolute;
+            font-size: 3rem;
+            font-weight: bold;
+            text-align: center;
+            color: yellow;
+            margin-left:30px;
+
+
+            animation-name: colorChange;
+            animation-duration: 2s;
+            animation-iteration-count: 100;
+            animation-direction: alternate;
+            transition-timing-function: linear;
+        }
+
+        @keyframes colorChange {
+            0% {
+                color: yellow; /* Gray */
+            }
+            100% {
+                color: black; /* Dark Gray */
+            }
+        }
+    </style>
+</head>
+
+<body style="background-color:pink">
+    <div id="chart" style="width: 100%; height: 98vh;">
+        <div class="cont1">
+            <p id="loadSection">Loading Graphical Libraries and Graph Data...</p>
+        </div>
+    </div>
+</body>
+<!-- Include the external JavaScript file -->
+<script src="binance_sim.js"></script>
+
+
+</html>

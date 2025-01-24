@@ -1,0 +1,21 @@
+:80 {
+    root * /usr/share/caddy
+
+    # Serve files with precompressed Brotli and Gzip versions
+    file_server {
+        precompressed br gzip
+    }
+
+    # Set cache headers for static assets
+    @static_assets {
+        path *.js *.css *.png *.jpg *.jpeg *.svg *.webp *.woff *.woff2
+    }
+    header @static_assets {
+        Cache-Control "public, max-age=31536000, immutable"
+    }
+
+    # Set a generic Vary header to avoid cache issues with different encodings
+    header {
+        Vary Accept-Encoding
+    }
+}
