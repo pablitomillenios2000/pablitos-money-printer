@@ -1,4 +1,4 @@
-# Crypto Trader V 3.0
+# Crypto Ranger V 1.0
 
 ![Crypto](./docs/img/crypto.png)
 
