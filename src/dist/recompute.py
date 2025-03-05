@@ -18,6 +18,7 @@ command = ["sudo", "cp", "-r", "../view/*", "/usr/share/caddy"]
 os.system("python3 ./equity.py")
 os.system("python3 ./pairname.py")
 os.system("python3 ./compute_asset.py")
+os.system("python3 ./compute_poly_reg.py")
 #os.system("python3 ./compute_ema.py")
 #os.system("python3 ./compute_sma.py")
 #os.system("python3 ./slopedirection.py")
