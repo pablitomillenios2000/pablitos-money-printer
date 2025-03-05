@@ -6,4 +6,4 @@ It has a backend and a frontend
 
 in the backend run: python3 main.py
 
-in the frontend run: python3 -m http.server 8000
+in the frontend run: python3 -m http.server 6000
