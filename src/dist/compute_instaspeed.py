@@ -8,10 +8,10 @@ import numpy as np
 # ---------------------
 CONFIG_FILE = "apikey-crypto.json"
 ASSET_FILE = "../view/output/asset.txt"
-INSTASPEED_FILE = "../view/output/instaspeed.txt"
+SLOPE_FILE = "../view/output/pricediff.txt"
 
 # Create output directory if needed
-os.makedirs(os.path.dirname(INSTASPEED_FILE), exist_ok=True)
+os.makedirs(os.path.dirname(SLOPE_FILE), exist_ok=True)
 
 # ---------------------
 # Load configuration
@@ -35,26 +35,16 @@ except FileNotFoundError:
     exit(1)
 
 # ---------------------
-# Calculate Instantaneous Speed
+# Calculate rolling difference
 # ---------------------
-# Percentage change from previous price
-asset_data["InstantaneousSpeed"] = asset_data["Price"].pct_change() * 100
-
-# Optional: Amplify and log the speed
-amplification_factor = 10
-asset_data["AmplifiedSpeed"] = asset_data["InstantaneousSpeed"] * amplification_factor
-
-def symmetric_log(x, small_value=1e-6):
-    return np.sign(x) * np.log1p(np.abs(x) + small_value)
-
-asset_data["LogAmplifiedSpeed"] = symmetric_log(asset_data["AmplifiedSpeed"])
+# Diff of 1 period (i.e., current price - previous price)
+asset_data["PriceDiff"] = asset_data["Price"].diff(periods=1)
 
 # ---------------------
-# Save to instaspeed.txt
+# Save to output file
 # ---------------------
-# You can choose which speed to save. Let's save the LogAmplifiedSpeed.
-asset_data[["Timestamp", "LogAmplifiedSpeed"]].dropna().to_csv(
-    INSTASPEED_FILE, header=False, index=False, float_format="%.8f"
-)
+# Drop the first row which will have a NaN difference, then save Timestamp and PriceDiff
+diff_data = asset_data.dropna(subset=["PriceDiff"])[["Timestamp", "PriceDiff"]]
+diff_data.to_csv(SLOPE_FILE, index=False, header=False)
 
-print(f"Instantaneous speed saved to {INSTASPEED_FILE}")
+print(f"Rolling price differences have been saved to {SLOPE_FILE}.")
