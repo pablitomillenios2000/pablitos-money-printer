@@ -12,7 +12,7 @@ trades_file = "../view/output/trades.txt"
 with open(api_key_file, 'r') as f:
     config = json5.load(f)
 
-investment = config["investment"]
+#investment = config["investment"]
 trailing_stop_loss_percentage = config["sl_percentage"]  # e.g. 1.5 for 1.5%
 
 print("Computing trailing stop loss trades and local minima")
