@@ -1,4 +1,3 @@
-
 function setTitleWithPairName() {
     // First, fetch the pair name
     fetch('./output/pairname.txt?' + Math.random())
@@ -53,6 +52,10 @@ function plotData(logarithmic = false) {
     const sellReasons = [];
     let showTrades = true;
 
+    // Polynomial Regression
+    const timestampsPolyreg = [];
+    const valuesPolyreg = [];
+
     // Use PapaParse to parse CSV files
     function parseCSV(url, callback) {
         return new Promise((resolve, reject) => {
@@ -96,7 +99,19 @@ function plotData(logarithmic = false) {
         });
     });
 
-    Promise.all([parseAsset, parseTrades])
+    // Parse polyreg
+    const parsePolyreg = parseCSV('./output/polyreg.txt?' + Math.random(), (data) => {
+        data.forEach(row => {
+            if (row.length < 2) return;
+            const [timestamp, value] = row;
+            if (typeof timestamp === 'number' && value !== undefined) {
+                timestampsPolyreg.push(timestamp);
+                valuesPolyreg.push(value);
+            }
+        });
+    });
+
+    Promise.all([parseAsset, parseTrades, parsePolyreg])
         .then(() => {
             matchTradesToAsset();
             createChart();
@@ -222,7 +237,24 @@ function plotData(logarithmic = false) {
             });
         }
 
-        // 4) Define Layout
+        // 4) Polynomial Regression trace (in pink)
+        if (timestampsPolyreg.length > 0) {
+            traces.push({
+                x: timestampsPolyreg.map(ts => new Date(ts * 1000)),
+                y: valuesPolyreg,
+                mode: 'lines',
+                type: 'scatter',
+                name: 'Polynomial Regression',
+                line: {
+                    shape: 'spline',
+                    width: 2,
+                    color: 'pink'
+                },
+                yaxis: 'y'
+            });
+        }
+
+        // 5) Define Layout
         const layout = {
             title: titleContents,
             xaxis: { title: 'Time' },
@@ -256,4 +288,3 @@ function plotData(logarithmic = false) {
 
 // Call the function
 setTitleWithPairName();
-
