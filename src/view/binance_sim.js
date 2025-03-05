@@ -53,10 +53,6 @@ function plotData(logarithmic = false) {
     const sellReasons = [];
     let showTrades = true;
 
-    // Polynomial Regression
-    const timestampsPolyreg = [];
-    const valuesPolyreg = [];
-
     // InstaSpeed
     const timestampsInstaSpeed = [];
     const valuesInstaSpeed = [];
@@ -68,6 +64,12 @@ function plotData(logarithmic = false) {
     // (NEW) Linear Regression
     const timestampsLinreg = [];
     const valuesLinreg = [];
+
+    // (NEW) Poly Up/Down
+    const timestampsPolyup = [];
+    const valuesPolyup = [];
+    const timestampsPolydown = [];
+    const valuesPolydown = [];
 
     // Use PapaParse to parse CSV files
     function parseCSV(url, callback) {
@@ -112,19 +114,10 @@ function plotData(logarithmic = false) {
         });
     });
 
-    // Parse polyreg
-    const parsePolyreg = parseCSV('./output/polyreg.txt?' + Math.random(), (data) => {
-        data.forEach(row => {
-            if (row.length < 2) return;
-            const [timestamp, value] = row;
-            if (typeof timestamp === 'number' && value !== undefined) {
-                timestampsPolyreg.push(timestamp);
-                valuesPolyreg.push(value);
-            }
-        });
-    });
+    // (REMOVED) parsePolyreg – replaced by parsePolyup and parsePolydown below
 
-    // Parse instaspeed
+    /*
+    // Parse instaspeed (commented out in original)
     const parseInstaSpeed = parseCSV('./output/polyacc.txt?' + Math.random(), (data) => {
         data.forEach(row => {
             if (row.length < 2) return;
@@ -135,6 +128,7 @@ function plotData(logarithmic = false) {
             }
         });
     });
+    */
 
     // Parse instaspeed_abs (NEW)
     const parseInstaSpeedAbs = parseCSV('./output/polyacc_abs.txt?' + Math.random(), (data) => {
@@ -148,10 +142,9 @@ function plotData(logarithmic = false) {
         });
     });
 
-    // (NEW) Parse linreg
+    // Parse linreg (NEW)
     const parseLinreg = parseCSV('./output/linreg.txt?' + Math.random(), (data) => {
         data.forEach(row => {
-            // Each row should be [timestamp, value]
             if (row.length < 2) return;
             const [timestamp, value] = row;
             if (typeof timestamp === 'number' && value !== undefined) {
@@ -161,14 +154,38 @@ function plotData(logarithmic = false) {
         });
     });
 
+    // (NEW) Parse polyup
+    const parsePolyup = parseCSV('./output/polyup.txt?' + Math.random(), (data) => {
+        data.forEach(row => {
+            if (row.length < 2) return;
+            const [timestamp, value] = row;
+            if (typeof timestamp === 'number' && value !== undefined) {
+                timestampsPolyup.push(timestamp);
+                valuesPolyup.push(value);
+            }
+        });
+    });
+
+    // (NEW) Parse polydown
+    const parsePolydown = parseCSV('./output/polydown.txt?' + Math.random(), (data) => {
+        data.forEach(row => {
+            if (row.length < 2) return;
+            const [timestamp, value] = row;
+            if (typeof timestamp === 'number' && value !== undefined) {
+                timestampsPolydown.push(timestamp);
+                valuesPolydown.push(value);
+            }
+        });
+    });
+
     // Load all CSVs
     Promise.all([
         parseAsset,
         parseTrades,
-        parsePolyreg,
-        parseInstaSpeed,
         parseInstaSpeedAbs,
-        parseLinreg  // (NEW)
+        parseLinreg,
+        parsePolyup,
+        parsePolydown
     ])
     .then(() => {
         matchTradesToAsset();
@@ -295,24 +312,11 @@ function plotData(logarithmic = false) {
             });
         }
 
-        // 4) Polynomial Regression trace
-        if (timestampsPolyreg.length > 0) {
-            traces.push({
-                x: timestampsPolyreg.map(ts => new Date(ts * 1000)),
-                y: valuesPolyreg,
-                mode: 'lines',
-                type: 'scatter',
-                name: 'Polynomial Regression',
-                line: {
-                    shape: 'spline',
-                    width: 2,
-                    color: 'pink'
-                },
-                yaxis: 'y'
-            });
-        }
+        // (REMOVED) Polynomial Regression trace
 
         // 5) InstaSpeed trace (right axis, %)
+        // (If you decide to enable parseInstaSpeed again, you can add it here.)
+        /*
         if (timestampsInstaSpeed.length > 0) {
             traces.push({
                 x: timestampsInstaSpeed.map(ts => new Date(ts * 1000)),
@@ -328,6 +332,7 @@ function plotData(logarithmic = false) {
                 yaxis: 'y2'
             });
         }
+        */
 
         // 6) InstaSpeed Abs trace (right axis, %, NEW)
         if (timestampsInstaSpeedAbs.length > 0) {
@@ -363,7 +368,41 @@ function plotData(logarithmic = false) {
             });
         }
 
-        // 8) Define Layout
+        // (NEW) 8) Poly Up trace (green)
+        if (timestampsPolyup.length > 0) {
+            traces.push({
+                x: timestampsPolyup.map(ts => new Date(ts * 1000)),
+                y: valuesPolyup,
+                mode: 'lines',
+                type: 'scatter',
+                name: 'Upwards Movements',
+                line: {
+                    shape: 'spline',
+                    width: 2,
+                    color: 'green'
+                },
+                yaxis: 'y'
+            });
+        }
+
+        // (NEW) 9) Poly Down trace (red)
+        if (timestampsPolydown.length > 0) {
+            traces.push({
+                x: timestampsPolydown.map(ts => new Date(ts * 1000)),
+                y: valuesPolydown,
+                mode: 'lines',
+                type: 'scatter',
+                name: 'Downwards Movements',
+                line: {
+                    shape: 'spline',
+                    width: 2,
+                    color: 'red'
+                },
+                yaxis: 'y'
+            });
+        }
+
+        // Define Layout
         const layout = {
             title: titleContents,
             xaxis: { title: 'Time' },
