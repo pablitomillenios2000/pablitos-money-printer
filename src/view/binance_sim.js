@@ -1,3 +1,4 @@
+
 function setTitleWithPairName() {
     // First, fetch the pair name
     fetch('./output/pairname.txt?' + Math.random())
@@ -63,6 +64,10 @@ function plotData(logarithmic = false) {
     // InstaSpeed Abs (NEW)
     const timestampsInstaSpeedAbs = [];
     const valuesInstaSpeedAbs = [];
+
+    // (NEW) Linear Regression
+    const timestampsLinreg = [];
+    const valuesLinreg = [];
 
     // Use PapaParse to parse CSV files
     function parseCSV(url, callback) {
@@ -143,13 +148,27 @@ function plotData(logarithmic = false) {
         });
     });
 
+    // (NEW) Parse linreg
+    const parseLinreg = parseCSV('./output/linreg.txt?' + Math.random(), (data) => {
+        data.forEach(row => {
+            // Each row should be [timestamp, value]
+            if (row.length < 2) return;
+            const [timestamp, value] = row;
+            if (typeof timestamp === 'number' && value !== undefined) {
+                timestampsLinreg.push(timestamp);
+                valuesLinreg.push(value);
+            }
+        });
+    });
+
     // Load all CSVs
     Promise.all([
         parseAsset,
         parseTrades,
         parsePolyreg,
         parseInstaSpeed,
-        parseInstaSpeedAbs  // (NEW)
+        parseInstaSpeedAbs,
+        parseLinreg  // (NEW)
     ])
     .then(() => {
         matchTradesToAsset();
@@ -310,7 +329,7 @@ function plotData(logarithmic = false) {
             });
         }
 
-        // 6) InstaSpeed Abs trace (right axis, %, NEW) - no smoothing, brown color
+        // 6) InstaSpeed Abs trace (right axis, %, NEW)
         if (timestampsInstaSpeedAbs.length > 0) {
             traces.push({
                 x: timestampsInstaSpeedAbs.map(ts => new Date(ts * 1000)),
@@ -319,7 +338,7 @@ function plotData(logarithmic = false) {
                 type: 'scatter',
                 name: 'InstaSpeed Abs',
                 line: {
-                    shape: 'line',  // no smoothing
+                    shape: 'line',
                     width: 4,
                     color: 'orange'
                 },
@@ -327,7 +346,24 @@ function plotData(logarithmic = false) {
             });
         }
 
-        // 7) Define Layout
+        // 7) Linear Regression trace (NEW)
+        if (timestampsLinreg.length > 0) {
+            traces.push({
+                x: timestampsLinreg.map(ts => new Date(ts * 1000)),
+                y: valuesLinreg,
+                mode: 'lines',
+                type: 'scatter',
+                name: 'Linear Regression',
+                line: {
+                    shape: 'line', // no spline smoothing
+                    width: 2,
+                    color: 'gray'
+                },
+                yaxis: 'y'
+            });
+        }
+
+        // 8) Define Layout
         const layout = {
             title: titleContents,
             xaxis: { title: 'Time' },
@@ -357,3 +393,4 @@ function plotData(logarithmic = false) {
 
 // Call the function
 setTitleWithPairName();
+
