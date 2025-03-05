@@ -116,7 +116,7 @@ function plotData(logarithmic = false) {
     });
 
     // Parse instaspeed
-    const parseInstaSpeed = parseCSV('./output/polyacc.txt?' + Math.random(), (data) => {
+    const parseInstaSpeed = parseCSV('./output/polyacc_abs.txt?' + Math.random(), (data) => {
         data.forEach(row => {
             if (row.length < 2) return;
             const [timestamp, value] = row;
@@ -279,7 +279,7 @@ function plotData(logarithmic = false) {
                 type: 'scatter',
                 name: 'InstaSpeed',
                 line: {
-                    shape: 'spline',
+                    shape: 'line',
                     width: 2,
                     color: 'black'
                 },
