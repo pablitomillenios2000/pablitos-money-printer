@@ -1,8 +1,8 @@
 {
     "key": "",
     "secret": "",
-    "pair":"SUIUSDC",
-    "exchange":"Home",
+    "pair":"BTCUSDC",
+    "exchange":"Binance",
     "number_sim_orders":2,
     "slippage_percent":0.025,
     "account_shared_x":"1",
@@ -11,9 +11,9 @@
     "investment": 150, //initial investment in usdc
     "margin": 4, // 4x is in reality 5x (1x base + 4x borrow)
     "sl_percentage": 1.5,
-    "input_file": "../assets/suiusdc-realtime.csv",
-    "start_date": "2024-12-25", //"2021-01-01",
-    "end_date": "2040-01-20", //"2021-11-20",
+    "input_file": "../assets/btcusdc-realtime.csv",
+    "start_date": "2025-03-04 14:00:00", //"2021-01-01 14:00:00",
+    "end_date": "2025-03-04 15:00:00", //"2021-11-20",
     "ema_days": 1800,
     "ema_days_micro": 200,
     "min_positive_slope": -99

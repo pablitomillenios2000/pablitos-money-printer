@@ -14,18 +14,19 @@ os.makedirs(os.path.dirname(output_file), exist_ok=True)
 with open(config_file, "r") as json_file:
     config = json5.load(json_file)
     input_file = config.get("input_file")  # Extract the input file from the JSON
-    start_date = config.get("start_date")  # Extract the start date
-    end_date = config.get("end_date")      # Extract the end date
+    start_date_str = config.get("start_date")  # Extract the start date (as string)
+    end_date_str = config.get("end_date")      # Extract the end date (as string)
 
 # Check if the input file and date range are specified
 if not input_file:
     raise ValueError("Input file is not specified in the JSON configuration.")
-if not start_date or not end_date:
+if not start_date_str or not end_date_str:
     raise ValueError("Start and/or end dates are not specified in the JSON configuration.")
 
-# Convert start_date and end_date to timezone-aware datetime objects
-start_date = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
-end_date = datetime.strptime(end_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+# Convert start_date_str and end_date_str to timezone-aware datetime objects
+# Adjust the strptime format to match your JSON date/time string, e.g. "YYYY-MM-DD HH:MM:SS"
+start_date = datetime.strptime(start_date_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+end_date = datetime.strptime(end_date_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
 
 # Initialize a counter for the number of lines written
 lines_written = 0
@@ -39,7 +40,7 @@ with open(input_file, "r") as infile, open(output_file, "w") as outfile:
     for line in tqdm(infile, total=total_lines, desc="Processing lines", unit="lines"):
         # Split the line by the pipe character
         parts = line.strip().split("|")
-        
+
         # Extract the timestamp (first column) and closing price (4th column)
         if len(parts) >= 4:
             try:
@@ -48,7 +49,7 @@ with open(input_file, "r") as infile, open(output_file, "w") as outfile:
             except ValueError:
                 # Skip lines with invalid timestamps
                 continue
-            
+
             # Check if the date falls within the specified range
             if start_date <= line_date <= end_date:
                 closing_price = parts[3]  # 4th column is index 3
