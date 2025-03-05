@@ -1,4 +1,4 @@
-# Crypto Ranger V 1.0
+# Pablito's Money Printer V 0.3
 
 ![Crypto](./docs/img/crypto.png)
 
