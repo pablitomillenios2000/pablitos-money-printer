@@ -1,8 +1,3 @@
-// A small helper to read the URL parameter
-function getQueryParam(param) {
-    const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get(param);
-}
 
 function setTitleWithPairName() {
     // First, fetch the pair name
@@ -35,6 +30,12 @@ function setTitleWithPairName() {
         .catch(error => {
             console.error('Error:', error);
         });
+}
+
+// A small helper to read the URL parameter
+function getQueryParam(param) {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(param);
 }
 
 function plotData(logarithmic = false) {
@@ -138,7 +139,7 @@ function plotData(logarithmic = false) {
 
         const traces = [];
 
-        // Asset trace
+        // 1) Main Asset Price trace (left y-axis)
         if (timestampsAsset.length > 0) {
             traces.push({
                 x: timestampsAsset.map(ts => new Date(ts * 1000)),
@@ -147,10 +148,31 @@ function plotData(logarithmic = false) {
                 type: 'scatter',
                 name: 'Asset Price',
                 line: lineStyle,
+                yaxis: 'y'
             });
         }
 
-        // Trades
+        // 2) Second trace for the percentage scale (right y-axis),
+        //    made invisible but used to scale the right axis
+        if (valuesAsset.length > 0) {
+            const minAssetValue = Math.min(...valuesAsset);
+            const percentValues = valuesAsset.map(val => 
+                ((val - minAssetValue) / minAssetValue) * 100
+            );
+
+            traces.push({
+                x: timestampsAsset.map(ts => new Date(ts * 1000)),
+                y: percentValues,
+                mode: 'lines',
+                type: 'scatter',
+                showlegend: false,
+                hoverinfo: 'none',
+                line: { color: 'rgba(0,0,0,0)', width: 0 },
+                yaxis: 'y2'
+            });
+        }
+
+        // 3) Trades
         const annotations = [];
         if (showTrades && (buyTimestamps.length > 0 || sellTimestamps.length > 0)) {
             // Buy
@@ -161,6 +183,7 @@ function plotData(logarithmic = false) {
                 type: 'scatter',
                 name: 'Buy Trades',
                 marker: { color: 'green', size: 10 },
+                yaxis: 'y'
             });
             buyTimestamps.forEach((ts, index) => {
                 annotations.push({
@@ -183,6 +206,7 @@ function plotData(logarithmic = false) {
                 type: 'scatter',
                 name: 'Sell Trades',
                 marker: { color: 'red', size: 10 },
+                yaxis: 'y'
             });
             sellTimestamps.forEach((ts, index) => {
                 annotations.push({
@@ -198,12 +222,26 @@ function plotData(logarithmic = false) {
             });
         }
 
+        // 4) Define Layout
         const layout = {
             title: titleContents,
             xaxis: { title: 'Time' },
             yaxis: {
                 title: 'Asset Price',
                 type: logarithmic ? 'log' : 'linear',
+                // Disable grid lines for absolute values
+                showgrid: false,
+                // Disable the zero line for absolute values
+                zeroline: false
+            },
+            yaxis2: {
+                title: 'Change from Min (%)',
+                overlaying: 'y',
+                side: 'right',
+                // Keep grid lines for the percentage axis
+                showgrid: true,
+                // Optionally hide the zero line if desired
+                zeroline: false
             },
             annotations: annotations
         };
@@ -218,3 +256,4 @@ function plotData(logarithmic = false) {
 
 // Call the function
 setTitleWithPairName();
+
