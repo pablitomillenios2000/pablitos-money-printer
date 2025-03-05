@@ -320,8 +320,8 @@ function plotData(logarithmic = false) {
                 name: 'InstaSpeed Abs',
                 line: {
                     shape: 'line',  // no smoothing
-                    width: 3,
-                    color: 'brown'
+                    width: 4,
+                    color: 'orange'
                 },
                 yaxis: 'y2'
             });
