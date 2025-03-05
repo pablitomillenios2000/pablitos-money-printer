@@ -14,14 +14,22 @@ df = df.dropna(subset=["LSMA"])
 df["Timestamp"] = pd.to_numeric(df["Timestamp"])
 df = df.sort_values(by="Timestamp").reset_index(drop=True)
 
-# 4. Calculate acceleration
+# 4. Calculate acceleration (no absolute value so we can retain sign)
 df["Acceleration"] = df["LSMA"].diff() / df["LSMA"] * 1000
 
-# 5. Take absolute value, drop NaN rows
-acc_result = abs(df.dropna(subset=["Acceleration"])[["Timestamp", "Acceleration"]])
+# 5. Drop NaN rows (the first row for which we cannot compute acceleration)
+acc_result = df.dropna(subset=["Acceleration"])[["Timestamp", "Acceleration"]]
 
-# 6. Categorize acceleration: if > 1.5 then 4, else keep it
-acc_result["Acceleration"] = acc_result["Acceleration"].apply(lambda x: 4 if x > 1.5 else x)
+# 6. Categorize acceleration
+def categorize_acc(x):
+    if x <= -1.5:
+        return -4
+    elif x >= 1.5:
+        return 4
+    else:
+        return "---"
+
+acc_result["Acceleration"] = acc_result["Acceleration"].apply(categorize_acc)
 
 # 7. Write categorized acceleration to the output file without headers or index
 acc_result.to_csv(POLYACC_FILE, index=False, header=False)

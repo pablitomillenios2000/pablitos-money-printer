@@ -60,6 +60,10 @@ function plotData(logarithmic = false) {
     const timestampsInstaSpeed = [];
     const valuesInstaSpeed = [];
 
+    // InstaSpeed Abs (NEW)
+    const timestampsInstaSpeedAbs = [];
+    const valuesInstaSpeedAbs = [];
+
     // Use PapaParse to parse CSV files
     function parseCSV(url, callback) {
         return new Promise((resolve, reject) => {
@@ -116,7 +120,7 @@ function plotData(logarithmic = false) {
     });
 
     // Parse instaspeed
-    const parseInstaSpeed = parseCSV('./output/polyacc_abs.txt?' + Math.random(), (data) => {
+    const parseInstaSpeed = parseCSV('./output/polyacc.txt?' + Math.random(), (data) => {
         data.forEach(row => {
             if (row.length < 2) return;
             const [timestamp, value] = row;
@@ -127,12 +131,31 @@ function plotData(logarithmic = false) {
         });
     });
 
-    Promise.all([parseAsset, parseTrades, parsePolyreg, parseInstaSpeed])
-        .then(() => {
-            matchTradesToAsset();
-            createChart();
-        })
-        .catch(err => console.error('Error loading data:', err));
+    // Parse instaspeed_abs (NEW)
+    const parseInstaSpeedAbs = parseCSV('./output/polyacc_abs.txt?' + Math.random(), (data) => {
+        data.forEach(row => {
+            if (row.length < 2) return;
+            const [timestamp, value] = row;
+            if (typeof timestamp === 'number' && value !== undefined) {
+                timestampsInstaSpeedAbs.push(timestamp);
+                valuesInstaSpeedAbs.push(value);
+            }
+        });
+    });
+
+    // Load all CSVs
+    Promise.all([
+        parseAsset,
+        parseTrades,
+        parsePolyreg,
+        parseInstaSpeed,
+        parseInstaSpeedAbs  // (NEW)
+    ])
+    .then(() => {
+        matchTradesToAsset();
+        createChart();
+    })
+    .catch(err => console.error('Error loading data:', err));
 
     function matchTradesToAsset() {
         rawTrades.forEach(trade => {
@@ -253,7 +276,7 @@ function plotData(logarithmic = false) {
             });
         }
 
-        // 4) Polynomial Regression trace (in pink)
+        // 4) Polynomial Regression trace
         if (timestampsPolyreg.length > 0) {
             traces.push({
                 x: timestampsPolyreg.map(ts => new Date(ts * 1000)),
@@ -270,7 +293,7 @@ function plotData(logarithmic = false) {
             });
         }
 
-        // 5) InstaSpeed trace (in black), on the right axis (percent)
+        // 5) InstaSpeed trace (right axis, %)
         if (timestampsInstaSpeed.length > 0) {
             traces.push({
                 x: timestampsInstaSpeed.map(ts => new Date(ts * 1000)),
@@ -283,29 +306,42 @@ function plotData(logarithmic = false) {
                     width: 2,
                     color: 'black'
                 },
-                yaxis: 'y2'  // Ties it to the right-hand (percentage) axis
+                yaxis: 'y2'
             });
         }
 
-        // 6) Define Layout
+        // 6) InstaSpeed Abs trace (right axis, %, NEW) - no smoothing, brown color
+        if (timestampsInstaSpeedAbs.length > 0) {
+            traces.push({
+                x: timestampsInstaSpeedAbs.map(ts => new Date(ts * 1000)),
+                y: valuesInstaSpeedAbs,
+                mode: 'lines',
+                type: 'scatter',
+                name: 'InstaSpeed Abs',
+                line: {
+                    shape: 'line',  // no smoothing
+                    width: 2,
+                    color: 'brown'
+                },
+                yaxis: 'y2'
+            });
+        }
+
+        // 7) Define Layout
         const layout = {
             title: titleContents,
             xaxis: { title: 'Time' },
             yaxis: {
                 title: 'Asset Price',
                 type: logarithmic ? 'log' : 'linear',
-                // Disable grid lines for absolute values
                 showgrid: false,
-                // Disable the zero line for absolute values
                 zeroline: false
             },
             yaxis2: {
                 title: 'Change from Min (%)',
                 overlaying: 'y',
                 side: 'right',
-                // Keep grid lines for the percentage axis
                 showgrid: true,
-                // Optionally hide the zero line if desired
                 zeroline: false
             },
             annotations: annotations
