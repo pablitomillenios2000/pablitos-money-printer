@@ -13,7 +13,7 @@ from binance.client import Client
 from binance.exceptions import BinanceAPIException, BinanceRequestException
 
 BASE_URL = 'https://api.binance.com'
-SLIPPAGE_FILE = '/home/g1pablo_escaida1/CRYPTO-Trader/src/view/output/slippage.txt'
+SLIPPAGE_FILE = '/home/g1pablo_escaida1/pablitos-money-printer/src/view/output/slippage.txt'
 
 # ------------------- HELPER FUNCTIONS ------------------- #
 def parse_pair(pair: str):
@@ -144,7 +144,7 @@ def main():
 
     try:
         # 1) Load config
-        with open(f"{home_dir}/CRYPTO-Trader/src/dist/apikey-crypto.json", "r") as f:
+        with open(f"{home_dir}/pablitos-money-printer/src/dist/apikey-crypto.json", "r") as f:
             api_keys = json5.load(f)
 
         api_key = api_keys.get('key')

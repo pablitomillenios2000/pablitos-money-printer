@@ -13,14 +13,14 @@ from pathlib import Path
 # ------------------------------------------------------------------------------
 home_dir = Path.home()
 home_dir = '/home/g1pablo_escaida1/'
-with open(f"{home_dir}/CRYPTO-Trader/src/dist/apikey-crypto.json", "r") as file:
+with open(f"{home_dir}/pablitos-money-printer/src/dist/apikey-crypto.json", "r") as file:
     config = json5.load(file)
 
 API_KEY = config.get("key")
 SECRET_KEY = config.get("secret")
 leverage = config.get('margin')  # We'll use this for net equity calculation
 
-outfile = f"{home_dir}/CRYPTO-Trader/src/view/output/equity.txt"
+outfile = f"{home_dir}pablitos-money-printer/src/view/output/equity.txt"
 
 # Example: if the JSON has "pair": "HBARUSDC"
 # We'll parse that down to "HBAR" as the base token.

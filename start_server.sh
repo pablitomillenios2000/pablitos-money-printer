@@ -4,7 +4,7 @@ clear
 echo ""
 
 sudo rm /usr/share/caddy/output/equity.*
-sudo rm /home/g1pablo_escaida1/CRYPTO-Trader/src/view/output/equity.*
+sudo rm /home/g1pablo_escaida1/pablitos-money-printer/src/view/output/equity.*
 
 # File containing the JSON data
 CONFIG_FILE="./src/dist/apikey-crypto.json"

@@ -9,7 +9,7 @@ from pathlib import Path
 # Load the trading pair and API keys from apikey-crypto.json
 # ----------------------------------------------------------------------------
 home_dir = Path.home()
-with open(f"{home_dir}/CRYPTO-Trader/src/dist/apikey-crypto.json", "r") as file:
+with open(f"{home_dir}/pablitos-money-printer/src/dist/apikey-crypto.json", "r") as file:
     config = json5.load(file)
 
 # Validate required keys
