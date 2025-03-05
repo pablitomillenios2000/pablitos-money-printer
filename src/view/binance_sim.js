@@ -116,7 +116,7 @@ function plotData(logarithmic = false) {
     });
 
     // Parse instaspeed
-    const parseInstaSpeed = parseCSV('./output/pricediff.txt?' + Math.random(), (data) => {
+    const parseInstaSpeed = parseCSV('./output/acceleration.txt?' + Math.random(), (data) => {
         data.forEach(row => {
             if (row.length < 2) return;
             const [timestamp, value] = row;

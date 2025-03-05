@@ -8,10 +8,10 @@ import numpy as np
 # ---------------------
 CONFIG_FILE = "apikey-crypto.json"
 ASSET_FILE = "../view/output/asset.txt"
-SLOPE_FILE = "../view/output/pricediff.txt"
+ACCEL_FILE = "../view/output/acceleration.txt"
 
 # Create output directory if needed
-os.makedirs(os.path.dirname(SLOPE_FILE), exist_ok=True)
+os.makedirs(os.path.dirname(ACCEL_FILE), exist_ok=True)
 
 # ---------------------
 # Load configuration
@@ -35,16 +35,22 @@ except FileNotFoundError:
     exit(1)
 
 # ---------------------
-# Calculate rolling difference
+# Compute transformed log price
 # ---------------------
-# Diff of 1 period (i.e., current price - previous price)
-asset_data["PriceDiff"] = asset_data["Price"].diff(periods=1)
+asset_data["LogPrice"] = np.log(asset_data["Price"])
+
+# ---------------------
+# Compute acceleration (second derivative)
+# ---------------------
+asset_data["Acceleration"] = asset_data["LogPrice"].diff() / asset_data["LogPrice"]  * 10000 / 2 #.diff()
 
 # ---------------------
 # Save to output file
 # ---------------------
-# Drop the first row which will have a NaN difference, then save Timestamp and PriceDiff
-diff_data = asset_data.dropna(subset=["PriceDiff"])[["Timestamp", "PriceDiff"]]
-diff_data.to_csv(SLOPE_FILE, index=False, header=False)
+# Drop rows with NaN in Acceleration (first two diffs will be NaN)
+accel_data = asset_data.dropna(subset=["Acceleration"])[["Timestamp", "Acceleration"]]
 
-print(f"Rolling price differences have been saved to {SLOPE_FILE}.")
+# Write to CSV without header or index
+accel_data.to_csv(ACCEL_FILE, index=False, header=False)
+
+print(f"Acceleration values have been saved to {ACCEL_FILE}.")
