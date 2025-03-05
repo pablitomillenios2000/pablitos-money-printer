@@ -56,6 +56,10 @@ function plotData(logarithmic = false) {
     const timestampsPolyreg = [];
     const valuesPolyreg = [];
 
+    // InstaSpeed
+    const timestampsInstaSpeed = [];
+    const valuesInstaSpeed = [];
+
     // Use PapaParse to parse CSV files
     function parseCSV(url, callback) {
         return new Promise((resolve, reject) => {
@@ -111,7 +115,19 @@ function plotData(logarithmic = false) {
         });
     });
 
-    Promise.all([parseAsset, parseTrades, parsePolyreg])
+    // Parse instaspeed
+    const parseInstaSpeed = parseCSV('./output/instaspeed.txt?' + Math.random(), (data) => {
+        data.forEach(row => {
+            if (row.length < 2) return;
+            const [timestamp, value] = row;
+            if (typeof timestamp === 'number' && value !== undefined) {
+                timestampsInstaSpeed.push(timestamp);
+                valuesInstaSpeed.push(value);
+            }
+        });
+    });
+
+    Promise.all([parseAsset, parseTrades, parsePolyreg, parseInstaSpeed])
         .then(() => {
             matchTradesToAsset();
             createChart();
@@ -254,7 +270,24 @@ function plotData(logarithmic = false) {
             });
         }
 
-        // 5) Define Layout
+        // 5) InstaSpeed trace (in black), on the right axis (percent)
+        if (timestampsInstaSpeed.length > 0) {
+            traces.push({
+                x: timestampsInstaSpeed.map(ts => new Date(ts * 1000)),
+                y: valuesInstaSpeed,
+                mode: 'lines',
+                type: 'scatter',
+                name: 'InstaSpeed',
+                line: {
+                    shape: 'spline',
+                    width: 2,
+                    color: 'black'
+                },
+                yaxis: 'y2'  // Ties it to the right-hand (percentage) axis
+            });
+        }
+
+        // 6) Define Layout
         const layout = {
             title: titleContents,
             xaxis: { title: 'Time' },
