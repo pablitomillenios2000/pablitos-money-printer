@@ -8,7 +8,7 @@ import numpy as np
 # ---------------------
 CONFIG_FILE = "apikey-crypto.json"
 ASSET_FILE = "../view/output/asset.txt"
-ACCEL_FILE = "../view/output/acceleration.txt"
+ACCEL_FILE = "../view/output/acceleration_.txt"
 
 # Create output directory if needed
 os.makedirs(os.path.dirname(ACCEL_FILE), exist_ok=True)
