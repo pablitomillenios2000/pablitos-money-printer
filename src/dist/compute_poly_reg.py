@@ -39,7 +39,7 @@ except FileNotFoundError:
 # ----------------------------------------------------------------------
 use_filt = config.get("use_filt", True)   # Smooth data before curve fitting
 filt_per = config.get("filt_per", 10)     # Period for Super Smoother filter
-per      = config.get("per", 10)         # Regression sample length
+per      = config.get("per", 10)          # Regression sample length
 order    = config.get("order", 2)         # Polynomial order
 calc_offs= config.get("calc_offs", 0)     # Regression offset
 ndev     = config.get("ndev", 2.0)        # Channel width coefficient
