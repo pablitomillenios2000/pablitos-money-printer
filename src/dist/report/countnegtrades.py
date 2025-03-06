@@ -13,6 +13,11 @@ df_trades = pd.read_csv(
     names=["timestamp", "side", "trade_price", "marker"]
 )
 
+# --------------------------------------------------
+# CONVERT timestamps from Unix seconds to datetime
+# --------------------------------------------------
+df_trades["timestamp"] = pd.to_datetime(df_trades["timestamp"], unit="s")
+
 # 2. Sort trades chronologically
 df_trades.sort_values("timestamp", inplace=True)
 df_trades.reset_index(drop=True, inplace=True)
@@ -28,10 +33,10 @@ downstart_indices = [i for i in downstart_indices if i + 1 in df_trades.index]
 downend_indices = [i + 1 for i in downstart_indices]
 
 df_start_down = df_trades.loc[downstart_indices].reset_index(drop=True)
-df_end_down   = df_trades.loc[downend_indices].reset_index(drop=True)
+df_end_down = df_trades.loc[downend_indices].reset_index(drop=True)
 
 df_start_down.columns = ["start_timestamp", "start_side", "start_trade_price", "start_marker"]
-df_end_down.columns   = ["end_timestamp",   "end_side",   "end_trade_price",   "end_marker"]
+df_end_down.columns = ["end_timestamp", "end_side", "end_trade_price", "end_marker"]
 
 df_pairs_down = pd.concat([df_start_down, df_end_down], axis=1)
 df_pairs_down = df_pairs_down[df_pairs_down["end_marker"] == "downend"].copy()
@@ -60,10 +65,10 @@ upstart_indices = [i for i in upstart_indices if i + 1 in df_trades.index]
 upend_indices = [i + 1 for i in upstart_indices]
 
 df_start_up = df_trades.loc[upstart_indices].reset_index(drop=True)
-df_end_up   = df_trades.loc[upend_indices].reset_index(drop=True)
+df_end_up = df_trades.loc[upend_indices].reset_index(drop=True)
 
 df_start_up.columns = ["start_timestamp", "start_side", "start_trade_price", "start_marker"]
-df_end_up.columns   = ["end_timestamp",   "end_side",   "end_trade_price",   "end_marker"]
+df_end_up.columns = ["end_timestamp", "end_side", "end_trade_price", "end_marker"]
 
 df_pairs_up = pd.concat([df_start_up, df_end_up], axis=1)
 df_pairs_up = df_pairs_up[df_pairs_up["end_marker"] == "upend"].copy()
@@ -82,7 +87,7 @@ ratio_up_below_threshold = (
 )
 
 # --------------------------------------------------
-#      Print Terminal Summary (as before)
+#      Print Terminal Summary (optional)
 # --------------------------------------------------
 # DOWN trades summary
 print("===== DOWNSTART → DOWNEND =====")
@@ -111,10 +116,39 @@ print(
 )
 
 # --------------------------------------------------
-#      Write Combined Summary to negtrades.txt
+#      Combined Summary
 # --------------------------------------------------
 total_trades = total_up_trades + total_down_trades
 
+if total_trades > 0:
+    start_time = df_trades["timestamp"].min()
+    end_time = df_trades["timestamp"].max()
+    timespan = end_time - start_time  # Timedelta
+
+    total_timespan_in_days = timespan.total_seconds() / 86400.0
+    timespan_in_months = total_timespan_in_days / 30.0  # Approx. 30-day months
+
+    if timespan_in_months > 0:
+        trades_per_month = total_trades / timespan_in_months
+    else:
+        trades_per_month = 0
+
+    # Average spacing between trades in hours
+    trades_per_hour = (total_trades / (total_timespan_in_days * 24)) if total_timespan_in_days > 0 else 0
+    trade_every_x_hours = 1.0 / trades_per_hour if trades_per_hour > 0 else 0.0
+
+    total_timespan_in_days = round(total_timespan_in_days, 1)
+    trades_per_month = round(trades_per_month, 1)
+    trade_every_x_hours = round(trade_every_x_hours, 1)
+else:
+    # If no trades, fallback to zeros
+    total_timespan_in_days = 0
+    trades_per_month = 0
+    trade_every_x_hours = 0
+
+# --------------------------------------------------
+#   Write Summary to negtrades.txt
+# --------------------------------------------------
 summary_text = (
     f"total_trades: {total_trades}\n"
     f"threshold: {THRESHOLD}\n"
@@ -123,11 +157,14 @@ summary_text = (
     f"upwtrades_below_threshold: {count_up_below_threshold}\n"
     f"upwtrades_below_threshold_ratio: {ratio_up_below_threshold:.2f}\n\n"
     f"dowtrades_below_threshold: {count_down_below_threshold}\n"
-    f"dowtrades_below_threshold_ratio: {ratio_down_below_threshold:.2f}\n"
+    f"dowtrades_below_threshold_ratio: {ratio_down_below_threshold:.2f}\n\n"
+    f"total_timespan_in_days: {total_timespan_in_days:.1f}\n"
+    f"trades_per_month: {trades_per_month:.1f}\n"
+    f"1_trade_every_x_hours: {trade_every_x_hours:.1f}\n"
 )
 
 with open(NEGTRADES_FILE, "w") as f:
     f.write(summary_text)
 
-# print("\n----- Summary written to negtrades.txt (no commas) -----\n")
-# print(summary_text)
+print("\n----- Summary written to negtrades.txt -----\n")
+print(summary_text)
