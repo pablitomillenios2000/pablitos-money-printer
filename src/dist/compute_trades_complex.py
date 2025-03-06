@@ -14,9 +14,6 @@ polydown_file = "../view/output/polydown.txt"
 with open(api_key_file, 'r') as f:
     config = json5.load(f)
 
-# Example if you need a parameter from config:
-# trailing_stop_loss_percentage = config["sl_percentage"]  # Not used here, but as an example
-
 ##############################################################################
 # 2. Helpers: read data, write trades
 ##############################################################################
@@ -63,16 +60,18 @@ def parse_poly_file(poly_path, asset_map, reason_start, reason_end, trades_path)
     """
     Reads a file like polyup.txt or polydown.txt.  
     Identifies contiguous segments of numeric data (i.e. lines NOT '---').  
-    - For each segment, the *first* timestamp => place a BUY (reason=reason_start).
-    - The *last* timestamp => place a SELL (reason=reason_end).
+    - For each segment of length >= 2, place a BUY (reason=reason_start) at the first timestamp
+      and a SELL (reason=reason_end) at the last timestamp.
 
     Lines in poly file have format:  <timestamp>,<price or '---'>
     We skip lines with '---'.
     """
     segment = []  # will hold (timestamp, price) for the current contiguous block
+
     def close_segment(segment_list):
-        """When we have a closed segment, place buy at first, sell at last."""
-        if not segment_list:
+        """When we have a closed segment, place buy at first, sell at last (only if length >= 2)."""
+        if len(segment_list) < 2:
+            # Skip one-point segments entirely
             return
 
         # Buy at the first in the segment
@@ -80,14 +79,13 @@ def parse_poly_file(poly_path, asset_map, reason_start, reason_end, trades_path)
         write_trade_if_in_asset_map(first_ts, first_price, "buy", reason_start)
 
         # Sell at the last in the segment
-        if len(segment_list) > 1:
-            last_ts, last_price = segment_list[-1]
-            write_trade_if_in_asset_map(last_ts, last_price, "sell", reason_end)
+        last_ts, last_price = segment_list[-1]
+        write_trade_if_in_asset_map(last_ts, last_price, "sell", reason_end)
 
     def write_trade_if_in_asset_map(ts, suggested_price, action, reason):
         """
         Writes a trade if we find the exact timestamp in asset_map. 
-        Otherwise, skip or implement your interpolation logic if needed.
+        Otherwise, skip or implement interpolation logic if needed.
         """
         if ts in asset_map:
             actual_price = asset_map[ts]
