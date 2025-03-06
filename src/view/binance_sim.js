@@ -268,7 +268,7 @@ function plotData(logarithmic = false) {
                 mode: 'markers',
                 type: 'scatter',
                 name: 'Buy Trades',
-                marker: { color: 'green', size: 10 },
+                marker: { color: 'green', size: 15 },
                 yaxis: 'y'
             });
             buyTimestamps.forEach((ts, index) => {
@@ -279,7 +279,7 @@ function plotData(logarithmic = false) {
                     yref: 'y',
                     text: buyReasons[index],
                     showarrow: false,
-                    font: { size: 10, color: 'green' },
+                    font: { size: 15, color: 'green' },
                     yshift: 10,
                 });
             });
@@ -291,7 +291,7 @@ function plotData(logarithmic = false) {
                 mode: 'markers',
                 type: 'scatter',
                 name: 'Sell Trades',
-                marker: { color: 'red', size: 10 },
+                marker: { color: 'red', size: 15 },
                 yaxis: 'y'
             });
             sellTimestamps.forEach((ts, index) => {
@@ -302,7 +302,7 @@ function plotData(logarithmic = false) {
                     yref: 'y',
                     text: sellReasons[index],
                     showarrow: false,
-                    font: { size: 10, color: 'red' },
+                    font: { size: 15, color: 'red' },
                     yshift: -10,
                 });
             });
