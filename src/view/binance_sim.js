@@ -419,7 +419,7 @@ function plotData(logarithmic = false) {
                 line: {
                     shape: 'spline',
                     width: 2,
-                    color: 'brown'
+                    color: 'pink'
                 },
                 yaxis: 'y2'
             });
