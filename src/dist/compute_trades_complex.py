@@ -10,9 +10,9 @@ polyacc_file = "../view/output/polyacc.txt"  # acceleration file
 polydown_file = "../view/output/polydown.txt"
 LINREG_SLOPE_FILE = "../view/output/linreg_slopes.txt"
 
-MIN_STEEPNESS = 0.05   # Minimum steepness of the linreg slope to open trade
-MIN_ACCELERATION = 0    # Minimum acceleration (polyreg) threshold
-MIN_TRADE_AGE = 5       # Segment must span at least 5 minutes to place a trade
+MIN_STEEPNESS = 0.05  # Minimum steepness of the linreg to open trade
+MIN_ACCELERATION = 0  # Minimum acceleration steepness of the polyreg
+TRADE_MIN_AGE = 5     # (minutes) Segment must last at least this long
 
 ##############################################################################
 # 1. Load config (if needed)
@@ -119,7 +119,7 @@ def is_local_maximum(ts, asset_map, sorted_ts):
     A point is considered a local maximum if:
       price(ts) > price(prev_ts) AND price(ts) > price(next_ts)
     where prev_ts and next_ts are the immediate neighbors of 'ts' in sorted_ts.
-    If 'ts' is the first or last in sorted_ts, return False.
+    If 'ts' is the first or last in sorted_ts, return False (cannot check).
     """
     if ts not in asset_map:
         return False
@@ -141,8 +141,8 @@ def is_local_maximum(ts, asset_map, sorted_ts):
 def is_local_minimum(ts, asset_map, sorted_ts):
     """
     A point is considered a local minimum if:
-      price(ts) < price(prev_ts) AND price(ts) < price(next_ts).
-    If 'ts' is the first or last in sorted_ts, return False.
+      price(ts) < price(prev_ts) AND price(ts) < price(next_ts)
+    If 'ts' is the first or last in sorted_ts, return False (cannot check).
     """
     if ts not in asset_map:
         return False
@@ -162,9 +162,8 @@ def is_local_minimum(ts, asset_map, sorted_ts):
     return (current_price < prev_price) and (current_price < next_price)
 
 ##############################################################################
-# 4. Parsing "polyup.txt" / "polydown.txt" to find segments,
-#    checking slope, acceleration, skipping local max/min for upstart/downstart,
-#    and ensuring segment duration >= MIN_TRADE_AGE minutes
+# 4. Parsing "polyup.txt" / "polydown.txt" to find segments, checking slope,
+#    acceleration, and skipping local max/min for upstart/downstart
 ##############################################################################
 def parse_poly_file(
     poly_path,
@@ -180,50 +179,49 @@ def parse_poly_file(
 ):
     """
     Reads a file like polyup.txt or polydown.txt.
-    
-    Identifies contiguous segments of numeric data (lines NOT containing '---').
-    Once '---' is encountered, we treat it as the end of that segment and:
-      - BUY at the segment's first timestamp 
-        (if slope & acceleration thresholds pass and not a local max/min).
-      - SELL at the segment's last timestamp.
-      - Only if (last_ts - first_ts) >= MIN_TRADE_AGE * 60.
-    
-    If the file ends without a trailing '---', that last segment remains open
-    and does NOT produce a sell trade.
-    """
+    Identifies contiguous segments of numeric data (i.e. lines NOT '---').
+    - For each segment, the *first* timestamp => place a BUY (reason=reason_start)
+      ONLY if the slope and the acceleration at that timestamp exceed their thresholds
+      and the slope sign is correct:
+        > min_steepness for upstart,
+        < -min_steepness for downstart.
+    - The *last* timestamp => place a SELL (reason=reason_end) if the buy occurred.
 
+    Lines in the poly file have the format: <timestamp>,<price or '---'>
+    We skip lines with '---'.
+
+    Additional conditions:
+    - If is_up=True, skip the "buy" if that first timestamp is a local maximum.
+    - If is_up=False, skip the "buy" if that first timestamp is a local minimum.
+    - Also, ensure the segment is at least TRADE_MIN_AGE minutes long
+      (last_ts - first_ts >= TRADE_MIN_AGE * 60).
+    """
     segment = []
     sorted_ts = build_sorted_timestamps(asset_map)
 
     def close_segment(segment_list):
-        """
-        When we have a closed segment (triggered by '---'), place buy at first, sell at last
-        only if slope/acceleration pass checks, we skip local max/min for starts,
-        and the segment's duration is >= MIN_TRADE_AGE minutes.
+        """When we have a closed segment, place buy at first, sell at last
+           only if slope/acceleration are steep enough and correct sign,
+           passes the local max/min checks, and meets the TRADE_MIN_AGE requirement.
         """
         if not segment_list:
             return
 
-        # Check that the segment is at least 2 points
-        if len(segment_list) < 2:
-            return
-
-        # Calculate duration in seconds
         first_ts, first_price = segment_list[0]
-        last_ts, _ = segment_list[-1]
-        duration_seconds = last_ts - first_ts
+        last_ts, last_price = segment_list[-1]
 
-        # Ensure segment is at least MIN_TRADE_AGE minutes
-        if duration_seconds < MIN_TRADE_AGE * 60:
+        # Check min trade age in seconds
+        if last_ts - first_ts < TRADE_MIN_AGE * 60:
+            # Segment isn't old enough
             return
 
-        # --- Slope check at segment start ---
+        # --- Slope check ---
         slope = slope_map.get(first_ts, None)
         if slope is None:
             return
 
-        # For upstart, need slope > min_steepness
-        # For downstart, need slope < -min_steepness
+        # For upstart, we need slope > min_steepness
+        # For downstart, we need slope < -min_steepness
         if is_up:
             if slope <= min_steepness:
                 return
@@ -231,12 +229,12 @@ def parse_poly_file(
             if slope >= -min_steepness:
                 return
 
-        # --- Acceleration check (also at segment start) ---
+        # --- Acceleration check ---
         acceleration = acceleration_map.get(first_ts, None)
         if acceleration is None or abs(acceleration) <= min_acceleration:
-            return
+            return  # Acceleration not high enough, skip
 
-        # --- Local max/min check at segment start ---
+        # --- Local max/min check ---
         if is_up:
             # For an "upstart", skip if first_ts is a local maximum
             if is_local_maximum(first_ts, asset_map, sorted_ts):
@@ -246,29 +244,25 @@ def parse_poly_file(
             if is_local_minimum(first_ts, asset_map, sorted_ts):
                 return
 
-        # Conditions pass => place BUY at first candle
+        # If conditions pass, place the buy
         write_trade_if_in_asset_map(first_ts, first_price, "buy", reason_start)
 
-        # SELL at the segment's last candle
-        last_ts, last_price = segment_list[-1]
-        write_trade_if_in_asset_map(last_ts, last_price, "sell", reason_end)
+        # Then place the sell at the last candle of the segment
+        if len(segment_list) > 1:
+            write_trade_if_in_asset_map(last_ts, last_price, "sell", reason_end)
 
     def write_trade_if_in_asset_map(ts, suggested_price, action, reason):
         """
         Writes a trade if we find the exact timestamp in asset_map. 
-        Otherwise, skip or implement interpolation if needed.
+        Otherwise, skip or implement interpolation logic if needed.
         """
         if ts in asset_map:
             actual_price = asset_map[ts]
             write_trade(trades_path, ts, action, actual_price, reason)
         else:
-            # If you need interpolation, place your logic here
+            # If you need interpolation, place your interpolation logic here.
             pass
 
-    # -------------------------------------------------------------------------
-    # Read the poly file; every time we encounter '---', we close the segment.
-    # If the file ends with an open segment, that segment remains open => no SELL.
-    # -------------------------------------------------------------------------
     with open(poly_path, 'r') as f:
         for line in f:
             line = line.strip()
@@ -282,27 +276,26 @@ def parse_poly_file(
             try:
                 ts = int(float(parts[0]))
             except ValueError:
-                continue  # skip malformed line
+                continue  # Skip malformed line
 
-            # Check if second part is numeric or '---'
+            # Check if price is numeric or '---'
             price_str = parts[1]
             if price_str == '---':
-                # End the current segment if it exists
+                # This breaks the current segment
                 if segment:
                     close_segment(segment)
                     segment = []
             else:
-                # Price is numeric
+                # Valid price
                 try:
                     price_val = float(price_str)
                     segment.append((ts, price_val))
                 except ValueError:
                     pass
 
-    # -------------------------------------------------------------------------
-    # IMPORTANT: We do NOT close_segment(segment) here if there's no trailing '---'.
-    # Thus, the last segment is only closed if '---' appears. 
-    # -------------------------------------------------------------------------
+    # End of file: if there's a segment still open, close it
+    if segment:
+        close_segment(segment)
 
 ##############################################################################
 # 5. Main logic
@@ -327,13 +320,9 @@ def main():
     initialize_trades_file(trades_file)
 
     # 5e. Parse polyup => for each contiguous numeric segment:
-    #     - Place BUY at the segment's first timestamp if:
-    #       (a) slope > MIN_STEEPNESS, 
-    #       (b) acceleration > MIN_ACCELERATION, 
-    #       (c) not local max, 
-    #       (d) segment duration >= MIN_TRADE_AGE
-    #     - Place SELL at the segment's last timestamp
-    #     - Only if '---' is encountered to close that segment
+    #     - BUY at start (if slope > MIN_STEEPNESS, acceleration above threshold, 
+    #       not local max, and segment >= TRADE_MIN_AGE),
+    #     - SELL at end.
     parse_poly_file(
         polyup_file,
         asset_map=asset_map,
@@ -347,10 +336,10 @@ def main():
         is_up=True
     )
 
-    # 5f. Parse polydown => similarly for down segments:
-    #     - BUY at segment start (slope < -MIN_STEEPNESS, etc.),
-    #     - SELL at segment end,
-    #     - Only if '---' is encountered to close that segment
+    # 5f. Parse polydown => for each contiguous numeric segment:
+    #     - BUY at start (if slope < -MIN_STEEPNESS, acceleration above threshold, 
+    #       not local min, and segment >= TRADE_MIN_AGE),
+    #     - SELL at end.
     parse_poly_file(
         polydown_file,
         asset_map=asset_map,
