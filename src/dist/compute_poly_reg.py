@@ -38,7 +38,7 @@ except FileNotFoundError:
 # Configurable parameters (defaults can be changed or extended)
 # ----------------------------------------------------------------------
 use_filt = config.get("use_filt", True)   # Smooth data before curve fitting
-filt_per = config.get("filt_per", 200)     # Period for Super Smoother filter
+filt_per = config.get("filt_per", 200)    # Period for Super Smoother filter -- 10
 per      = config.get("per", 10)          # Regression sample length
 order    = config.get("order", 2)         # Polynomial order
 calc_offs= config.get("calc_offs", 0)     # Regression offset

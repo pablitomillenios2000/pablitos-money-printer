@@ -9,7 +9,7 @@ polyup_file = "../view/output/polyup.txt"
 polydown_file = "../view/output/polydown.txt"
 LINREG_SLOPE_FILE = "../view/output/linreg_slopes.txt"
 
-MIN_STEEPNESS = 0.17 # Minimum Steepness of the Linreg to open trade
+MIN_STEEPNESS = 0.15 # Minimum Steepness of the Linreg to open trade
 
 ##############################################################################
 # 1. Load config (if needed)
