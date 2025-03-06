@@ -4,7 +4,7 @@ import pandas as pd
 TRADES_FILE = "../../view/output/trades.txt"
 NEGTRADES_FILE = "../../view/report/repoutput/negtrades.txt"  # Only for summary output
 
-THRESHOLD = 0.25
+THRESHOLD = 2.5
 
 # 1. Load trades data
 df_trades = pd.read_csv(
