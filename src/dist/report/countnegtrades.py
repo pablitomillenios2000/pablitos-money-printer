@@ -4,9 +4,7 @@ import pandas as pd
 TRADES_FILE = "../../view/output/trades.txt"
 NEGTRADES_FILE = "../../view/report/repoutput/negtrades.txt"
 
-# Define threshold in percentage points (5%).
-# Since we multiply ratio by 100, a threshold of 5 corresponds to 5%.
-THRESHOLD = 0.05 
+THRESHOLD = 0.12
 
 # 1. Load trades data
 df_trades = pd.read_csv(
@@ -42,7 +40,6 @@ df_pairs = pd.concat([df_start, df_end], axis=1)
 df_pairs = df_pairs[df_pairs["end_marker"] == "downend"].copy()
 
 # 4. Compute ratio as: (start_price / end_price - 1) * 100
-#    This gives a percentage change relative to end_price (multiplied by -1 from your original formula).
 df_pairs["ratio"] = (df_pairs["start_trade_price"] / df_pairs["end_trade_price"] - 1) * 100
 
 # Round ratio to 5 decimal places
@@ -69,7 +66,7 @@ df_pairs.to_csv(
 # ----- Summary Stats -----
 total_trades = len(df_pairs)
 
-# "Below threshold" means ratio < THRESHOLD (which is 5, i.e. 5%)
+# "Below threshold" means ratio < THRESHOLD
 trades_below_threshold = df_pairs[df_pairs["ratio"] < THRESHOLD]
 count_below_threshold = len(trades_below_threshold)
 percentage_below_threshold = (
@@ -83,7 +80,7 @@ print(f"Total trades: {total_trades}")
 print(f"Trades below threshold (ratio < {THRESHOLD}%): {count_below_threshold}")
 print(f"Percentage of trades below threshold: {percentage_below_threshold:.2f}%")
 
-# Print sample output (omitting end_timestamp)
+# Print only 3 rows of the matched pairs (omitting end_timestamp)
 print("\nMatched downstart→downend pairs (omitting end_timestamp) with ratio in % (rounded to 5 decimals):\n")
 print(
     df_pairs[
@@ -93,5 +90,5 @@ print(
             "end_trade_price",
             "ratio",
         ]
-    ]
+    ].head(3)
 )
