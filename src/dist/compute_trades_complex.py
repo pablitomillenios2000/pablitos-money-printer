@@ -10,9 +10,9 @@ polyacc_file = "../view/output/polyacc.txt"  # acceleration file
 polydown_file = "../view/output/polydown.txt"
 LINREG_SLOPE_FILE = "../view/output/linreg_slopes.txt"
 
-MIN_STEEPNESS = 0.05  # Minimum steepness of the linreg to open trade
-MIN_ACCELERATION = 0  # Minimum acceleration steepness of the polyreg
-TRADE_MIN_AGE = 5     # (minutes) Segment must last at least this long
+MIN_STEEPNESS = 0.05   # Minimum steepness of the linreg to open trade
+MIN_ACCELERATION = 0   # Minimum acceleration steepness of the polyreg
+TRADE_MIN_AGE = 5      # (minutes) Segment must last at least this long
 
 ##############################################################################
 # 1. Load config (if needed)
@@ -186,6 +186,7 @@ def parse_poly_file(
         > min_steepness for upstart,
         < -min_steepness for downstart.
     - The *last* timestamp => place a SELL (reason=reason_end) if the buy occurred.
+      BUT if we reach EOF without a trailing '---', use "tempend" as the reason.
 
     Lines in the poly file have the format: <timestamp>,<price or '---'>
     We skip lines with '---'.
@@ -196,13 +197,18 @@ def parse_poly_file(
     - Also, ensure the segment is at least TRADE_MIN_AGE minutes long
       (last_ts - first_ts >= TRADE_MIN_AGE * 60).
     """
+
+    # We'll store numeric lines in 'segment' until we encounter '---' or EOF:
     segment = []
     sorted_ts = build_sorted_timestamps(asset_map)
 
-    def close_segment(segment_list):
-        """When we have a closed segment, place buy at first, sell at last
-           only if slope/acceleration are steep enough and correct sign,
-           passes the local max/min checks, and meets the TRADE_MIN_AGE requirement.
+    def close_segment(segment_list, end_reason):
+        """
+        When we have a closed segment, place buy at first, sell at last
+        only if slope/acceleration are steep enough and correct sign,
+        passes the local max/min checks, and meets the TRADE_MIN_AGE requirement.
+        'end_reason' is either reason_end (e.g., "upend" or "downend")
+        or "tempend" if the file ended without a trailing '---'.
         """
         if not segment_list:
             return
@@ -220,8 +226,8 @@ def parse_poly_file(
         if slope is None:
             return
 
-        # For upstart, we need slope > min_steepness
-        # For downstart, we need slope < -min_steepness
+        # For upstart, need slope > min_steepness
+        # For downstart, need slope < -min_steepness
         if is_up:
             if slope <= min_steepness:
                 return
@@ -249,7 +255,7 @@ def parse_poly_file(
 
         # Then place the sell at the last candle of the segment
         if len(segment_list) > 1:
-            write_trade_if_in_asset_map(last_ts, last_price, "sell", reason_end)
+            write_trade_if_in_asset_map(last_ts, last_price, "sell", end_reason)
 
     def write_trade_if_in_asset_map(ts, suggested_price, action, reason):
         """
@@ -264,38 +270,39 @@ def parse_poly_file(
             pass
 
     with open(poly_path, 'r') as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            parts = line.split(',')
-            if len(parts) != 2:
-                continue
+        lines = f.readlines()
 
-            # Extract timestamp
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        parts = line.split(',')
+        if len(parts) != 2:
+            continue
+
+        # Extract timestamp
+        try:
+            ts = int(float(parts[0]))
+        except ValueError:
+            continue  # Skip malformed line
+
+        price_str = parts[1]
+        if price_str == '---':
+            # This breaks the current segment => close it with reason_end
+            if segment:
+                close_segment(segment, end_reason=reason_end)
+                segment = []
+        else:
+            # It's a numeric line => add to current segment
             try:
-                ts = int(float(parts[0]))
+                price_val = float(price_str)
+                segment.append((ts, price_val))
             except ValueError:
-                continue  # Skip malformed line
+                pass
 
-            # Check if price is numeric or '---'
-            price_str = parts[1]
-            if price_str == '---':
-                # This breaks the current segment
-                if segment:
-                    close_segment(segment)
-                    segment = []
-            else:
-                # Valid price
-                try:
-                    price_val = float(price_str)
-                    segment.append((ts, price_val))
-                except ValueError:
-                    pass
-
-    # End of file: if there's a segment still open, close it
+    # If there's a segment left open at EOF => close with "tempend"
     if segment:
-        close_segment(segment)
+        close_segment(segment, end_reason="tempend")
 
 ##############################################################################
 # 5. Main logic
@@ -320,9 +327,9 @@ def main():
     initialize_trades_file(trades_file)
 
     # 5e. Parse polyup => for each contiguous numeric segment:
-    #     - BUY at start (if slope > MIN_STEEPNESS, acceleration above threshold, 
+    #     - BUY at start (if slope > MIN_STEEPNESS, acceleration above threshold,
     #       not local max, and segment >= TRADE_MIN_AGE),
-    #     - SELL at end.
+    #     - SELL at end => "upend", or "tempend" if file ended
     parse_poly_file(
         polyup_file,
         asset_map=asset_map,
@@ -337,9 +344,9 @@ def main():
     )
 
     # 5f. Parse polydown => for each contiguous numeric segment:
-    #     - BUY at start (if slope < -MIN_STEEPNESS, acceleration above threshold, 
+    #     - BUY at start (if slope < -MIN_STEEPNESS, acceleration above threshold,
     #       not local min, and segment >= TRADE_MIN_AGE),
-    #     - SELL at end.
+    #     - SELL at end => "downend", or "tempend" if file ended
     parse_poly_file(
         polydown_file,
         asset_map=asset_map,
