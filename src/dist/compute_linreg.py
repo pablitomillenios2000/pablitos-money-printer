@@ -6,11 +6,13 @@ POLYUP_FILE = "../view/output/polyup.txt"
 POLYDOWN_FILE = "../view/output/polydown.txt"
 LINREG_FILE = "../view/output/linreg.txt"
 
+VERTICAL_OFFSET = 50
+
 def parse_segments(filename):
     """
     Parse the given poly-file (either polyup or polydown) looking for segments
     separated by lines containing '---'. Each numeric line is 'timestamp, value'.
-    
+
     Returns a list of (start_ts, end_ts) tuples, where start_ts = min of all
     timestamps in that segment, end_ts = max of all timestamps in that segment.
     """
@@ -23,7 +25,6 @@ def parse_segments(filename):
             if not line:
                 continue  # skip empty lines if any
 
-            # Each line is "timestamp, something"
             parts = line.split(",")
             if len(parts) != 2:
                 continue  # skip malformed lines
@@ -44,13 +45,12 @@ def parse_segments(filename):
                     segments.append((start_ts, end_ts))
                     current_timestamps = []
             else:
-                # A numeric line (hopefully). We'll parse or skip if invalid.
+                # A numeric line
                 try:
                     float_val = float(val_str)  # just to confirm it's numeric
                     current_timestamps.append(ts)
                 except ValueError:
-                    # Not numeric, ignore
-                    pass
+                    pass  # Not numeric, ignore
 
     # If file did not end with '---' and there's a leftover segment
     if current_timestamps:
@@ -63,8 +63,8 @@ def parse_segments(filename):
 def main():
     # 1) Read asset data
     df_asset = pd.read_csv(
-        ASSET_FILE, 
-        names=["timestamp", "price"], 
+        ASSET_FILE,
+        names=["timestamp", "price"],
         header=None,
         dtype={"timestamp": np.int64, "price": np.float64}
     )
@@ -75,16 +75,17 @@ def main():
     up_segments = parse_segments(POLYUP_FILE)
     down_segments = parse_segments(POLYDOWN_FILE)
 
-    # Combine them all (you could keep them separate if you want different outputs)
-    all_segments = up_segments + down_segments
+    # Label them: 'up' or 'down'
+    labeled_segments = [(start_ts, end_ts, "up")   for (start_ts, end_ts) in up_segments] + \
+                       [(start_ts, end_ts, "down") for (start_ts, end_ts) in down_segments]
 
-    # Sort by start time (optional, for convenience)
-    all_segments.sort(key=lambda x: x[0])
+    # Sort all segments by their start time
+    labeled_segments.sort(key=lambda x: x[0])
 
     # 3) Perform linear regression for each segment and write out
     print("Computing linear regressions and writing to:", LINREG_FILE)
     with open(LINREG_FILE, "w") as f_out:
-        for (start_ts, end_ts) in all_segments:
+        for (start_ts, end_ts, segment_type) in labeled_segments:
             # Subset asset data for [start_ts, end_ts]
             mask = (df_asset["timestamp"] >= start_ts) & (df_asset["timestamp"] <= end_ts)
             df_sub = df_asset.loc[mask].copy()
@@ -97,11 +98,22 @@ def main():
             y = df_sub["price"].values
 
             slope, intercept = np.polyfit(x, y, 1)
-            df_sub["linreg"] = slope * x + intercept
 
-            # Write "timestamp, linreg" for each row
-            for _, row in df_sub.iterrows():
-                f_out.write(f"{int(row['timestamp'])},{row['linreg']}\n")
+            # Determine offset direction for up vs. down segments
+            if segment_type == "up":
+                offset = -VERTICAL_OFFSET
+            else:  # segment_type == "down"
+                offset = VERTICAL_OFFSET
+
+            # Write each point with its Y-value shifted (up or down)
+            for ts_val in x:
+                shifted_val = slope * ts_val + intercept + offset
+                f_out.write(f"{int(ts_val)},{shifted_val}\n")
+
+            # After writing a segment, write a break line
+            # (using the last timestamp for clarity)
+            last_timestamp = int(x[-1])
+            f_out.write(f"{last_timestamp},---\n")
 
 if __name__ == "__main__":
     main()
