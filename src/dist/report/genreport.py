@@ -8,7 +8,7 @@ import os
 start_time = time.time()
 
 # Execute the commands
-os.system("python3 ./countnegtrades.py")
+os.system("python3 /home/g1pablo_escaida1/pablitos-money-printer/src/dist/report/countnegtrades.py")
 
 '''
 # Execute the command
