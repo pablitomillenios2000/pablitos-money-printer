@@ -52,13 +52,13 @@ function plotData(logarithmic = false) {
     const sellReasons = [];
     let showTrades = true;
 
-    // InstaSpeed
-    const timestampsInstaSpeed = [];
-    const valuesInstaSpeed = [];
+    // (NEW) polyacc_abs_up
+    const timestampsPolyaccAbsUp = [];
+    const valuesPolyaccAbsUp = [];
 
-    // InstaSpeed Abs (NEW)
-    const timestampsInstaSpeedAbs = [];
-    const valuesInstaSpeedAbs = [];
+    // (NEW) polyacc_abs_down
+    const timestampsPolyaccAbsDown = [];
+    const valuesPolyaccAbsDown = [];
 
     // (NEW) Linear Regression
     const timestampsLinreg = [];
@@ -113,14 +113,26 @@ function plotData(logarithmic = false) {
         });
     });
 
-    // Parse instaspeed_abs (NEW)
-    const parseInstaSpeedAbs = parseCSV('./output/polyacc_abs.txt?' + Math.random(), (data) => {
+    // (NEW) Parse polyacc_abs_up
+    const parsePolyaccAbsUp = parseCSV('./output/polyacc_abs_up.txt?' + Math.random(), (data) => {
         data.forEach(row => {
             if (row.length < 2) return;
             const [timestamp, value] = row;
             if (typeof timestamp === 'number' && value !== undefined) {
-                timestampsInstaSpeedAbs.push(timestamp);
-                valuesInstaSpeedAbs.push(value);
+                timestampsPolyaccAbsUp.push(timestamp);
+                valuesPolyaccAbsUp.push(value);
+            }
+        });
+    });
+
+    // (NEW) Parse polyacc_abs_down
+    const parsePolyaccAbsDown = parseCSV('./output/polyacc_abs_down.txt?' + Math.random(), (data) => {
+        data.forEach(row => {
+            if (row.length < 2) return;
+            const [timestamp, value] = row;
+            if (typeof timestamp === 'number' && value !== undefined) {
+                timestampsPolyaccAbsDown.push(timestamp);
+                valuesPolyaccAbsDown.push(value);
             }
         });
     });
@@ -165,7 +177,8 @@ function plotData(logarithmic = false) {
     Promise.all([
         parseAsset,
         parseTrades,
-        parseInstaSpeedAbs,
+        parsePolyaccAbsUp,
+        parsePolyaccAbsDown,
         parseLinreg,
         parsePolyup,
         parsePolydown
@@ -295,23 +308,39 @@ function plotData(logarithmic = false) {
             });
         }
 
-        // 6) InstaSpeed Abs trace (left axis) - pink dots
-        if (timestampsInstaSpeedAbs.length > 0) {
+        // 6) polyacc_abs_up trace (pink dots)
+        if (timestampsPolyaccAbsUp.length > 0) {
             traces.push({
-                x: timestampsInstaSpeedAbs.map(ts => new Date(ts * 1000)),
-                y: valuesInstaSpeedAbs,
-                mode: 'markers', // points only, no lines
+                x: timestampsPolyaccAbsUp.map(ts => new Date(ts * 1000)),
+                y: valuesPolyaccAbsUp,
+                mode: 'markers',
                 type: 'scatter',
-                name: 'InstaSpeed Abs',
+                name: 'polyacc_abs_up',
                 marker: {
                     color: 'pink',
                     size: 8
                 },
-                yaxis: 'y' // <-- now follows the main (left) axis
+                yaxis: 'y'
             });
         }
 
-        // 7) Linear Regression trace (NEW)
+        // 7) polyacc_abs_down trace (darkpink dots)
+        if (timestampsPolyaccAbsDown.length > 0) {
+            traces.push({
+                x: timestampsPolyaccAbsDown.map(ts => new Date(ts * 1000)),
+                y: valuesPolyaccAbsDown,
+                mode: 'markers',
+                type: 'scatter',
+                name: 'polyacc_abs_down',
+                marker: {
+                    color: 'deeppink', // "darkpink" variant
+                    size: 8
+                },
+                yaxis: 'y'
+            });
+        }
+
+        // 8) Linear Regression trace
         if (timestampsLinreg.length > 0) {
             traces.push({
                 x: timestampsLinreg.map(ts => new Date(ts * 1000)),
@@ -320,7 +349,7 @@ function plotData(logarithmic = false) {
                 type: 'scatter',
                 name: 'Linear Regression',
                 line: {
-                    shape: 'line', // no spline smoothing
+                    shape: 'line',
                     width: 2,
                     color: 'gray'
                 },
@@ -328,7 +357,7 @@ function plotData(logarithmic = false) {
             });
         }
 
-        // (NEW) 8) Poly Up trace (green)
+        // 9) Poly Up trace (green)
         if (timestampsPolyup.length > 0) {
             traces.push({
                 x: timestampsPolyup.map(ts => new Date(ts * 1000)),
@@ -345,7 +374,7 @@ function plotData(logarithmic = false) {
             });
         }
 
-        // (NEW) 9) Poly Down trace (red)
+        // 10) Poly Down trace (red)
         if (timestampsPolydown.length > 0) {
             traces.push({
                 x: timestampsPolydown.map(ts => new Date(ts * 1000)),
