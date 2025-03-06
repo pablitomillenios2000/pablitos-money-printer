@@ -151,5 +151,7 @@ def main():
     # 4d. Parse polydown => for each contiguous numeric segment: buy at start, sell at end
     parse_poly_file(polydown_file, asset_map, reason_start="downstart", reason_end="downend", trades_path=trades_file)
 
+    print("writing buy and sell trades")
+
 if __name__ == "__main__":
     main()
