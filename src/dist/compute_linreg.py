@@ -6,7 +6,7 @@ POLYUP_FILE = "../view/output/polyup.txt"
 POLYDOWN_FILE = "../view/output/polydown.txt"
 LINREG_FILE = "../view/output/linreg.txt"
 
-VERTICAL_OFFSET = 210
+VERTICAL_OFFSET = 220
 
 def parse_segments(filename):
     """
