@@ -6,7 +6,9 @@ input_file = "../view/output/trades.txt"
 output_file = "../view/output/portfolio.txt"
 
 initial_capital = 1000.0
-fee_rate = 0.0002  # e.g. 0.02% fee; adjust as needed
+fee_rate = 0.002  # 0.001 fee per trade x2 on binance
+                  # approx 2 euros on a 1000 eur trade
+                  # find a way to verify this
 
 def compute_portfolio_value(trades_path, output_path):
     # 1. Read and parse trades

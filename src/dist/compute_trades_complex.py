@@ -10,7 +10,7 @@ polyacc_file = "../view/output/polyacc.txt"  # acceleration file
 polydown_file = "../view/output/polydown.txt"
 LINREG_SLOPE_FILE = "../view/output/linreg_slopes.txt"
 
-MIN_STEEPNESS = 0.08 # Minimum steepness of the linreg to open trade
+MIN_STEEPNESS = 0.05 # Minimum steepness of the linreg to open trade
 MIN_ACCELERATION = 0  # Minimum acceleration steepness of the polyreg
 #DELAY_MINUTES = 20  # Minutes that the trend has to prove its value
 
