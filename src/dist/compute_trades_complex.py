@@ -11,7 +11,8 @@ polydown_file = "../view/output/polydown.txt"
 LINREG_SLOPE_FILE = "../view/output/linreg_slopes.txt"
 
 MIN_STEEPNESS = 0.15  # Minimum steepness of the linreg to open trade
-MIN_ACCELERATION = 0.001 # Minimum acceleration steepness of the polyreg
+MIN_ACCELERATION = 0.001  # Minimum acceleration steepness of the polyreg
+DELAY_MINUTES = 20  # Minutes that the trend has to prove its value
 
 ##############################################################################
 # 1. Load config (if needed)
@@ -180,12 +181,15 @@ def parse_poly_file(
     Reads a file like polyup.txt or polydown.txt.
     Identifies contiguous segments of numeric data (i.e. lines NOT '---').
     - For each segment, the *first* timestamp => place a BUY (reason=reason_start)
-      ONLY if both the slope and the acceleration at that timestamp exceed their thresholds.
+      ONLY if the slope and the acceleration at that timestamp exceed their thresholds
+      and the slope sign is correct:
+        > min_steepness for upstart,
+        < -min_steepness for downstart.
     - The *last* timestamp => place a SELL (reason=reason_end) if the buy occurred.
-    
+
     Lines in the poly file have the format: <timestamp>,<price or '---'>
     We skip lines with '---'.
-    
+
     Additional conditions:
     - If is_up=True, skip the "buy" if that first timestamp is a local maximum.
     - If is_up=False, skip the "buy" if that first timestamp is a local minimum.
@@ -195,23 +199,33 @@ def parse_poly_file(
 
     def close_segment(segment_list):
         """When we have a closed segment, place buy at first, sell at last
-           only if slope and acceleration are steep enough and it passes the local max/min checks."""
+           only if slope/acceleration are steep enough and correct sign,
+           and it passes the local max/min checks."""
         if not segment_list:
             return
 
         first_ts, first_price = segment_list[0]
 
-        # Check slope condition
+        # --- Slope check ---
         slope = slope_map.get(first_ts, None)
-        if slope is None or abs(slope) <= min_steepness:
-            return  # Not steep enough, skip trades
+        if slope is None:
+            return
 
-        # Check acceleration condition
+        # For upstart, we need slope > min_steepness
+        # For downstart, we need slope < -min_steepness
+        if is_up:
+            if slope <= min_steepness:
+                return
+        else:
+            if slope >= -min_steepness:
+                return
+
+        # --- Acceleration check ---
         acceleration = acceleration_map.get(first_ts, None)
         if acceleration is None or abs(acceleration) <= min_acceleration:
-            return  # Acceleration not high enough, skip trades
+            return  # Acceleration not high enough, skip
 
-        # Check local max/min condition
+        # --- Local max/min check ---
         if is_up:
             # For an "upstart", skip if first_ts is a local maximum
             if is_local_maximum(first_ts, asset_map, sorted_ts):
@@ -221,7 +235,7 @@ def parse_poly_file(
             if is_local_minimum(first_ts, asset_map, sorted_ts):
                 return
 
-        # If both conditions are met and we pass local max/min check, place the buy
+        # If conditions pass, place the buy
         write_trade_if_in_asset_map(first_ts, first_price, "buy", reason_start)
 
         # Then place the sell at the last candle of the segment
@@ -298,8 +312,8 @@ def main():
     initialize_trades_file(trades_file)
 
     # 5e. Parse polyup => for each contiguous numeric segment:
-    #     - buy at start (if slope and acceleration exceed thresholds and NOT a local max),
-    #     - sell at end.
+    #     - BUY at start (if slope > MIN_STEEPNESS, acceleration above threshold, not local max),
+    #     - SELL at end.
     parse_poly_file(
         polyup_file,
         asset_map=asset_map,
@@ -314,8 +328,8 @@ def main():
     )
 
     # 5f. Parse polydown => for each contiguous numeric segment:
-    #     - buy at start (if slope and acceleration exceed thresholds and NOT a local min),
-    #     - sell at end.
+    #     - BUY at start (if slope < -MIN_STEEPNESS, acceleration above threshold, not local min),
+    #     - SELL at end.
     parse_poly_file(
         polydown_file,
         asset_map=asset_map,
