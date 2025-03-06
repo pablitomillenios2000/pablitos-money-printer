@@ -38,6 +38,7 @@ os.system("bash ./compress_all.sh")
 
 # Execute the command
 try:
+    subprocess.run("sudo rm -rf /usr/share/caddy/*", shell=True, check=True)
     subprocess.run("sudo cp -r ../view/* /usr/share/caddy", shell=True, check=True)
     print("Files copied successfully!")
 except subprocess.CalledProcessError as e:
