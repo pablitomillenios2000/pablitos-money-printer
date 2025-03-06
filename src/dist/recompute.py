@@ -27,7 +27,7 @@ os.system("python3 ./compute_linreg.py")
 #os.system("python3 ./compute_sma.py")
 #os.system("python3 ./slopedirection.py")
 #os.system("python3 ./compute_ema_micro.py")
-os.system("python3 ./compute_trades_complex.py")
+os.system("python3 ./compute_trades_from_polyreg.py")
 # os.system("python3 ./compute_trades_ema_algo_minloss.py")
 # os.system("python3 ./compute_margin_requirement.py")
 #os.system("python3 ./tradedirectionfilter.py") #filters non-steep
