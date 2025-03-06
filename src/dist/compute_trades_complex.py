@@ -5,8 +5,12 @@ import json5
 api_key_file = "apikey-crypto.json"
 asset_file = "../view/output/asset.txt"
 trades_file = "../view/output/trades.txt"
-polyup_file = "../view/output/polyup.txt"
+
+polyup_file   = "../view/output/polyup.txt"
 polydown_file = "../view/output/polydown.txt"
+
+POLYACC_FILE_UP    = "../view/output/polyacc_abs_up.txt"
+POLYACC_FILE_DOWN  = "../view/output/polyacc_abs_down.txt"
 
 ##############################################################################
 # 1. Load config (if needed)
@@ -53,32 +57,80 @@ def write_trade(path, timestamp, action, price, reason):
     with open(path, 'a') as f:
         f.write(f"{timestamp},{action},{price},{reason}\n")
 
+def read_timestamps_file(path):
+    """
+    Reads a file containing lines of <timestamp>,<price or something>.
+    We only care about the timestamp part, so we return a set of timestamps.
+    This is helpful for polyacc_abs_up.txt, polyacc_abs_down.txt, etc.
+    If a line has '---' or is malformed, we skip it.
+    """
+    ts_set = set()
+    if not os.path.exists(path):
+        return ts_set  # Return empty set if file not found
+
+    with open(path, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            parts = line.split(',')
+            if len(parts) < 1:
+                continue
+            try:
+                # The first part is a timestamp
+                t = int(float(parts[0]))
+                ts_set.add(t)
+            except ValueError:
+                pass
+    return ts_set
+
 ##############################################################################
 # 3. Parsing "polyup.txt" and "polydown.txt" to find segments
 ##############################################################################
-def parse_poly_file(poly_path, asset_map, reason_start, reason_end, trades_path):
+def parse_poly_file(poly_path, asset_map,
+                    reason_start, reason_end,
+                    trades_path,
+                    eligible_ts=None):
     """
     Reads a file like polyup.txt or polydown.txt.  
     Identifies contiguous segments of numeric data (i.e. lines NOT '---').  
-    - For each segment of length >= 2, place a BUY (reason=reason_start) at the first timestamp
-      and a SELL (reason=reason_end) at the last timestamp.
 
-    Lines in poly file have format:  <timestamp>,<price or '---'>
-    We skip lines with '---'.
+    - For each segment of length >= 2:
+        - If eligible_ts is None:
+            * The 'start' is the first line in the segment.
+        - Else:
+            * The 'start' is the first line in that segment whose timestamp is in eligible_ts.
+              If none match, skip the entire segment.
+        - The 'end' is the last timestamp of that segment.
+
+    :param eligible_ts: set of timestamps that are allowed as the "start" of the trade.
+                       If None, we place the start at the first line in the segment (classic logic).
     """
     segment = []  # will hold (timestamp, price) for the current contiguous block
 
     def close_segment(segment_list):
-        """When we have a closed segment, place buy at first, sell at last (only if length >= 2)."""
+        """When we have a closed segment, place buy at start, sell at end (only if length >= 2)."""
         if len(segment_list) < 2:
-            # Skip one-point segments entirely
             return
 
-        # Buy at the first in the segment
-        first_ts, first_price = segment_list[0]
+        # Decide which index in segment_list is the "start."
+        start_index = 0
+        if eligible_ts is not None:
+            # Look for the first line in the segment that is in eligible_ts
+            start_index = None
+            for i, (ts, p) in enumerate(segment_list):
+                if ts in eligible_ts:
+                    start_index = i
+                    break
+            if start_index is None:
+                # No line in this segment is eligible => skip
+                return
+
+        # We have a valid start
+        first_ts, first_price = segment_list[start_index]
         write_trade_if_in_asset_map(first_ts, first_price, "buy", reason_start)
 
-        # Sell at the last in the segment
+        # End is always the last line in the segment
         last_ts, last_price = segment_list[-1]
         write_trade_if_in_asset_map(last_ts, last_price, "sell", reason_end)
 
@@ -143,11 +195,35 @@ def main():
     # 4b. Clear the trades file
     initialize_trades_file(trades_file)
 
-    # 4c. Parse polyup => for each contiguous numeric segment: buy at start, sell at end
-    parse_poly_file(polyup_file, asset_map, reason_start="upstart", reason_end="upend", trades_path=trades_file)
+    # 4c. Load down-eligible timestamps from polyacc_abs_down (for downstart)
+    down_eligible_ts = read_timestamps_file(POLYACC_FILE_DOWN)
 
-    # 4d. Parse polydown => for each contiguous numeric segment: buy at start, sell at end
-    parse_poly_file(polydown_file, asset_map, reason_start="downstart", reason_end="downend", trades_path=trades_file)
+    # 4d. Parse polydown => for each contiguous numeric segment:
+    #     buy at the first line that appears in down_eligible_ts,
+    #     sell at the last line.
+    parse_poly_file(
+        poly_path=polydown_file,
+        asset_map=asset_map,
+        reason_start="downstart",
+        reason_end="downend",
+        trades_path=trades_file,
+        eligible_ts=down_eligible_ts
+    )
+
+    # 4e. Load up-eligible timestamps from polyacc_abs_up (for upstart)
+    up_eligible_ts = read_timestamps_file(POLYACC_FILE_UP)
+
+    # 4f. Parse polyup => for each contiguous numeric segment:
+    #     buy at the first line that appears in up_eligible_ts,
+    #     sell at the last line.
+    parse_poly_file(
+        poly_path=polyup_file,
+        asset_map=asset_map,
+        reason_start="upstart",
+        reason_end="upend",
+        trades_path=trades_file,
+        eligible_ts=up_eligible_ts
+    )
 
     print("writing buy and sell trades")
 
