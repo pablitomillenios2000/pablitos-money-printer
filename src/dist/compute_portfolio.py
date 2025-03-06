@@ -18,7 +18,7 @@ margin_fee_1x = 0.002
 
 # For margin version, you can set e.g. Margin = 10 for 10x leverage
 # If Margin=1, margin is effectively disabled (as if no leverage).
-Margin = 10
+Margin = 20
 
 def compute_portfolio_value(trades_path, output_path):
     # 1. Read and parse trades
