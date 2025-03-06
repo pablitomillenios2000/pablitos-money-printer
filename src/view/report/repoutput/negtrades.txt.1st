@@ -1,0 +1,10 @@
+total_trades: 217
+threshold: 0.12
+total_uptrades: 109
+total_downtrades: 108
+
+upwtrades_below_threshold: 82
+upwtrades_below_threshold_ratio: 75.23
+
+dowtrades_below_threshold: 64
+dowtrades_below_threshold_ratio: 59.26
