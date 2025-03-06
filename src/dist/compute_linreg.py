@@ -5,6 +5,7 @@ ASSET_FILE = "../view/output/asset.txt"
 POLYUP_FILE = "../view/output/polyup.txt"
 POLYDOWN_FILE = "../view/output/polydown.txt"
 LINREG_FILE = "../view/output/linreg.txt"
+LINREG_SLOPE_FILE = "../view/output/linreg_slopes.txt"
 
 VERTICAL_OFFSET = 220
 
@@ -13,8 +14,9 @@ def parse_segments(filename):
     Parse the given poly-file (either polyup or polydown) looking for segments
     separated by lines containing '---'. Each numeric line is 'timestamp, value'.
 
-    Returns a list of (start_ts, end_ts) tuples, where start_ts = min of all
-    timestamps in that segment, end_ts = max of all timestamps in that segment.
+    Returns a list of (start_ts, end_ts) tuples, where:
+        start_ts = min of all timestamps in that segment,
+        end_ts = max of all timestamps in that segment.
     """
     segments = []
     current_timestamps = []  # hold timestamps for the current segment
@@ -82,9 +84,12 @@ def main():
     # Sort all segments by their start time
     labeled_segments.sort(key=lambda x: x[0])
 
-    # 3) Perform linear regression for each segment and write out
-    print("Computing linear regressions and writing to:", LINREG_FILE)
-    with open(LINREG_FILE, "w") as f_out:
+    # 3) Perform linear regression for each segment.
+    #    Write the offset regression curves to LINREG_FILE
+    #    and write the slope for each segment to LINREG_SLOPE_FILE
+    print("Computing linear regressions and writing results...")
+
+    with open(LINREG_FILE, "w") as f_out, open(LINREG_SLOPE_FILE, "w") as f_slope:
         for (start_ts, end_ts, segment_type) in labeled_segments:
             # Subset asset data for [start_ts, end_ts]
             mask = (df_asset["timestamp"] >= start_ts) & (df_asset["timestamp"] <= end_ts)
@@ -98,6 +103,9 @@ def main():
             y = df_sub["price"].values
 
             slope, intercept = np.polyfit(x, y, 1)
+
+            # Write the slope info at the beginning of each segment
+            f_slope.write(f"{start_ts},{slope}\n")
 
             # Determine offset direction for up vs. down segments
             if segment_type == "up":
