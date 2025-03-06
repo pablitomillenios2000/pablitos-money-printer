@@ -1,4 +1,3 @@
-
 function setTitleWithPairName() {
     // First, fetch the pair name
     fetch('./output/pairname.txt?' + Math.random())
@@ -113,22 +112,6 @@ function plotData(logarithmic = false) {
             }
         });
     });
-
-    // (REMOVED) parsePolyreg – replaced by parsePolyup and parsePolydown below
-
-    /*
-    // Parse instaspeed (commented out in original)
-    const parseInstaSpeed = parseCSV('./output/polyacc.txt?' + Math.random(), (data) => {
-        data.forEach(row => {
-            if (row.length < 2) return;
-            const [timestamp, value] = row;
-            if (typeof timestamp === 'number' && value !== undefined) {
-                timestampsInstaSpeed.push(timestamp);
-                valuesInstaSpeed.push(value);
-            }
-        });
-    });
-    */
 
     // Parse instaspeed_abs (NEW)
     const parseInstaSpeedAbs = parseCSV('./output/polyacc_abs.txt?' + Math.random(), (data) => {
@@ -312,42 +295,19 @@ function plotData(logarithmic = false) {
             });
         }
 
-        // (REMOVED) Polynomial Regression trace
-
-        // 5) InstaSpeed trace (right axis, %)
-        // (If you decide to enable parseInstaSpeed again, you can add it here.)
-        /*
-        if (timestampsInstaSpeed.length > 0) {
-            traces.push({
-                x: timestampsInstaSpeed.map(ts => new Date(ts * 1000)),
-                y: valuesInstaSpeed,
-                mode: 'lines',
-                type: 'scatter',
-                name: 'InstaSpeed',
-                line: {
-                    shape: 'line',
-                    width: 2,
-                    color: 'black'
-                },
-                yaxis: 'y2'
-            });
-        }
-        */
-
-        // 6) InstaSpeed Abs trace (right axis, %, NEW)
+        // 6) InstaSpeed Abs trace (left axis) - pink dots
         if (timestampsInstaSpeedAbs.length > 0) {
             traces.push({
                 x: timestampsInstaSpeedAbs.map(ts => new Date(ts * 1000)),
                 y: valuesInstaSpeedAbs,
-                mode: 'lines',
+                mode: 'markers', // points only, no lines
                 type: 'scatter',
                 name: 'InstaSpeed Abs',
-                line: {
-                    shape: 'line',
-                    width: 4,
-                    color: 'orange'
+                marker: {
+                    color: 'pink',
+                    size: 8
                 },
-                yaxis: 'y2'
+                yaxis: 'y' // <-- now follows the main (left) axis
             });
         }
 
@@ -432,4 +392,3 @@ function plotData(logarithmic = false) {
 
 // Call the function
 setTitleWithPairName();
-
