@@ -105,9 +105,13 @@ function plotData(logarithmic = false) {
     // Parse trades
     const parseTrades = parseCSV('./output/trades.txt?' + Math.random(), (data) => {
         data.forEach(row => {
-            if (row.length < 3) return;
-            const [timestamp, action, reason] = row;
+            // Expecting four columns: timestamp, action, price, reason
+            if (row.length < 4) return;
+            const [timestamp, action, price, reason] = row;
+
+            // Make sure we have valid timestamp, action, and reason
             if (typeof timestamp === 'number' && action && reason) {
+                // We'll store "reason" from the 4th column
                 rawTrades.push({ timestamp, action, reason });
             }
         });
@@ -279,7 +283,7 @@ function plotData(logarithmic = false) {
                     yref: 'y',
                     text: buyReasons[index],
                     showarrow: false,
-                    font: { size: 15, color: 'green' },
+                    font: { size: 10, color: 'green' },
                     yshift: 10,
                 });
             });
@@ -302,7 +306,7 @@ function plotData(logarithmic = false) {
                     yref: 'y',
                     text: sellReasons[index],
                     showarrow: false,
-                    font: { size: 15, color: 'red' },
+                    font: { size: 10, color: 'red' },
                     yshift: -10,
                 });
             });
