@@ -7,7 +7,7 @@ POLYDOWN_FILE = "../view/output/polydown.txt"
 LINREG_FILE = "../view/output/linreg.txt"
 LINREG_SLOPE_FILE = "../view/output/linreg_slopes.txt"
 
-VERTICAL_OFFSET = 220
+VERTICAL_OFFSET = 700
 
 def parse_segments(filename):
     """
