@@ -70,6 +70,10 @@ function plotData(logarithmic = false) {
     const timestampsPolydown = [];
     const valuesPolydown = [];
 
+    // (NEW) polyacc (brown trace)
+    const timestampsPolyacc = [];
+    const valuesPolyacc = [];
+
     // Use PapaParse to parse CSV files
     function parseCSV(url, callback) {
         return new Promise((resolve, reject) => {
@@ -108,10 +112,7 @@ function plotData(logarithmic = false) {
             // Expecting four columns: timestamp, action, price, reason
             if (row.length < 4) return;
             const [timestamp, action, price, reason] = row;
-
-            // Make sure we have valid timestamp, action, and reason
             if (typeof timestamp === 'number' && action && reason) {
-                // We'll store "reason" from the 4th column
                 rawTrades.push({ timestamp, action, reason });
             }
         });
@@ -177,6 +178,18 @@ function plotData(logarithmic = false) {
         });
     });
 
+    // (NEW) Parse polyacc (brown trace)
+    const parsePolyacc = parseCSV('./output/polyacc.txt?' + Math.random(), (data) => {
+        data.forEach(row => {
+            if (row.length < 2) return;
+            const [timestamp, value] = row;
+            if (typeof timestamp === 'number' && value !== undefined) {
+                timestampsPolyacc.push(timestamp);
+                valuesPolyacc.push(value);
+            }
+        });
+    });
+
     // Load all CSVs
     Promise.all([
         parseAsset,
@@ -185,7 +198,8 @@ function plotData(logarithmic = false) {
         parsePolyaccAbsDown,
         parseLinreg,
         parsePolyup,
-        parsePolydown
+        parsePolydown,
+        parsePolyacc  // NEW: add polyacc parsing
     ])
     .then(() => {
         matchTradesToAsset();
@@ -242,8 +256,7 @@ function plotData(logarithmic = false) {
             });
         }
 
-        // 2) Second trace for the percentage scale (right y-axis),
-        //    made invisible but used to scale the right axis
+        // 2) Second trace for the percentage scale (right y-axis)
         if (valuesAsset.length > 0) {
             const minAssetValue = Math.min(...valuesAsset);
             const percentValues = valuesAsset.map(val => 
@@ -337,7 +350,7 @@ function plotData(logarithmic = false) {
                 type: 'scatter',
                 name: 'polyacc_abs_down',
                 marker: {
-                    color: 'deeppink', // "darkpink" variant
+                    color: 'deeppink',
                     size: 8
                 },
                 yaxis: 'y'
@@ -392,6 +405,23 @@ function plotData(logarithmic = false) {
                     color: 'red'
                 },
                 yaxis: 'y'
+            });
+        }
+
+        // (NEW) polyacc trace (brown)
+        if (timestampsPolyacc.length > 0) {
+            traces.push({
+                x: timestampsPolyacc.map(ts => new Date(ts * 1000)),
+                y: valuesPolyacc,
+                mode: 'lines',
+                type: 'scatter',
+                name: 'polyacc',
+                line: {
+                    shape: 'spline',
+                    width: 2,
+                    color: 'brown'
+                },
+                yaxis: 'y2'
             });
         }
 
