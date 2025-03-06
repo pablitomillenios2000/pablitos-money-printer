@@ -1,7 +1,9 @@
 import os
 import json5
 
+# ------------------------------------------------------------------------------
 # File paths
+# ------------------------------------------------------------------------------
 api_key_file = "apikey-crypto.json"
 asset_file = "../view/output/asset.txt"
 trades_file = "../view/output/trades.txt"
@@ -10,26 +12,28 @@ polyacc_file = "../view/output/polyacc.txt"  # acceleration file
 polydown_file = "../view/output/polydown.txt"
 LINREG_SLOPE_FILE = "../view/output/linreg_slopes.txt"
 
-MIN_STEEPNESS = 0.05  # Minimum steepness of the linreg to open trade
-MIN_ACCELERATION = 0   # Minimum acceleration steepness of the polyreg
+# ------------------------------------------------------------------------------
+# Parameters
+# ------------------------------------------------------------------------------
+MIN_STEEPNESS = 0.05  # Minimum slope magnitude for opening trades
+MIN_ACCELERATION = 0   # Minimum acceleration magnitude for opening trades
+MIN_OFFICIAL_TRADE_AGE = 5  # in minutes; used to distinguish tempstart vs. upstart/downstart
 
-MIN_OFFICIAL_TRADE_AGE = 5  # in minutes
-
-##############################################################################
-# 1. Load config (if needed)
-##############################################################################
+# ------------------------------------------------------------------------------
+# 1. Load config (optional)
+# ------------------------------------------------------------------------------
 with open(api_key_file, 'r') as f:
     config = json5.load(f)
-# (Optional) Example usage of config parameters, if needed:
+# For example, you could do something with config, e.g.:
 # trailing_stop_loss_percentage = config["sl_percentage"]
 
-##############################################################################
-# 2. Helpers: read data, write trades
-##############################################################################
+# ------------------------------------------------------------------------------
+# 2. Helpers: reading data and writing trades
+# ------------------------------------------------------------------------------
 def read_asset_file(path):
     """
     Reads asset data into a dictionary of {timestamp: price}.
-    Assumes each line is:  <timestamp>,<price>
+    Each line: <timestamp>,<price>
     Returns dict[int -> float].
     """
     asset_map = {}
@@ -52,7 +56,7 @@ def read_asset_file(path):
 def read_linreg_slopes(path):
     """
     Reads slope data into a dictionary of {timestamp: slope}.
-    Assumes each line is: <timestamp>,<slope> .
+    Each line: <timestamp>,<slope>
     Returns dict[int -> float].
     """
     slope_map = {}
@@ -75,7 +79,7 @@ def read_linreg_slopes(path):
 def read_acceleration_file(path):
     """
     Reads acceleration data into a dictionary of {timestamp: acceleration}.
-    Assumes each line is: <timestamp>,<acceleration>.
+    Each line: <timestamp>,<acceleration>
     Returns dict[int -> float].
     """
     acceleration_map = {}
@@ -98,37 +102,37 @@ def read_acceleration_file(path):
 def initialize_trades_file(path):
     """Clears the contents of the trades file by opening it in write mode."""
     with open(path, 'w') as f:
-        f.write("")  # Clear the file contents
+        f.write("")  # Just wipe the file
 
 def write_trade(path, timestamp, action, price, reason):
     """
-    Append a trade line to trades file in the format:
+    Appends a trade line to trades file in the format:
       timestamp,action,price,reason
     """
     with open(path, 'a') as f:
         f.write(f"{timestamp},{action},{price},{reason}\n")
 
-##############################################################################
+# ------------------------------------------------------------------------------
 # 3. Local max/min check
-##############################################################################
+# ------------------------------------------------------------------------------
 def build_sorted_timestamps(asset_map):
-    """Return a sorted list of timestamps from the asset_map keys."""
+    """Returns a sorted list of timestamps from the given asset_map."""
     return sorted(asset_map.keys())
 
 def is_local_maximum(ts, asset_map, sorted_ts):
     """
-    A point is considered a local maximum if:
-      price(ts) > price(prev_ts) AND price(ts) > price(next_ts)
-    If 'ts' is the first or last in sorted_ts, return False (cannot check).
+    A point is a local maximum if:
+      price(ts) > price(prev_ts) and price(ts) > price(next_ts).
+    If 'ts' is the first or last in sorted_ts, returns False.
     """
     if ts not in asset_map:
         return False
     try:
         idx = sorted_ts.index(ts)
     except ValueError:
-        return False  # If we can't even find it (shouldn't happen), skip
+        return False
     if idx == 0 or idx == len(sorted_ts) - 1:
-        return False  # no neighbors to both sides
+        return False
 
     current_price = asset_map[ts]
     prev_ts = sorted_ts[idx - 1]
@@ -140,9 +144,9 @@ def is_local_maximum(ts, asset_map, sorted_ts):
 
 def is_local_minimum(ts, asset_map, sorted_ts):
     """
-    A point is considered a local minimum if:
-      price(ts) < price(prev_ts) AND price(ts) < price(next_ts)
-    If 'ts' is the first or last in sorted_ts, return False (cannot check).
+    A point is a local minimum if:
+      price(ts) < price(prev_ts) and price(ts) < price(next_ts).
+    If 'ts' is the first or last in sorted_ts, returns False.
     """
     if ts not in asset_map:
         return False
@@ -161,10 +165,10 @@ def is_local_minimum(ts, asset_map, sorted_ts):
 
     return (current_price < prev_price) and (current_price < next_price)
 
-##############################################################################
-# 4. Parsing "polyup.txt" / "polydown.txt" to find segments, checking slope,
-#    acceleration, and skipping local max/min for upstart/downstart
-##############################################################################
+# ------------------------------------------------------------------------------
+# 4. parse_poly_file: logic for polyup.txt / polydown.txt
+#    If the file does not end with '---', the last SELL is named "tempend".
+# ------------------------------------------------------------------------------
 def parse_poly_file(
     poly_path,
     asset_map,
@@ -179,66 +183,99 @@ def parse_poly_file(
     max_timestamp=None
 ):
     """
-    Reads a file like polyup.txt or polydown.txt.
-    Identifies contiguous segments of numeric data (i.e. lines NOT '---').
-    - For each segment, the *first* timestamp => place a BUY (reason=reason_start)
-      ONLY if the slope and the acceleration at that timestamp exceed their thresholds
-      and the slope sign is correct:
-        > min_steepness for upstart,
-        < -min_steepness for downstart.
-    - The *last* timestamp => place a SELL (reason=reason_end) if the buy occurred.
+    Reads lines from poly_path (like polyup.txt or polydown.txt).
+    Identifies contiguous segments of numeric data (lines NOT containing '---').
 
-    Additional conditions:
-    - If is_up=True, skip the "buy" if that first timestamp is a local maximum.
-    - If is_up=False, skip the "buy" if that first timestamp is a local minimum.
-
-    Also checks the age of the first timestamp against max_timestamp. If the
-    segment's first timestamp is "too recent" (< MIN_OFFICIAL_TRADE_AGE),
-    use a "tempstart" reason instead of "upstart"/"downstart".
+    - For each segment, the *first* timestamp => place a BUY 
+      (reason=reason_start or a "tempstart" if it's too recent).
+    - The *last* timestamp => place a SELL. If the file ends with '---',
+      that SELL reason is reason_end, otherwise it's "tempend".
+    - If we encounter '---' mid-file, we close the current segment normally 
+      (with reason_end).
+    - We skip a segment if slope/acceleration isn't steep enough or 
+      if the first_ts is a local max/min in the wrong direction.
     """
+
+    # --------------------------------------------------------------------------
+    # Read all lines so we can check if the file ends with '---'.
+    # --------------------------------------------------------------------------
+    with open(poly_path, 'r') as f:
+        all_lines = f.read().strip().splitlines()
+
+    # If file is empty, do nothing
+    if not all_lines:
+        return
+
+    # Does the last line end with '---'?
+    last_line = all_lines[-1].strip()
+    last_line_is_break = False
+    if last_line:
+        parts = last_line.split(',')
+        if len(parts) == 2 and parts[1] == '---':
+            last_line_is_break = True
+
+    # If NOT ending with '---', final SELL should be "tempend"
+    final_sell_reason = "tempend" if not last_line_is_break else reason_end
+
+    # Prepare to accumulate a segment
     segment = []
     sorted_ts = build_sorted_timestamps(asset_map)
 
-    # Decide which "tempstart" label to use
+    # For up or down "tempstart"
     temp_reason_start = "utempstart" if is_up else "dtempstart"
 
-    def close_segment(segment_list):
-        """When we have a closed segment, place buy at first, sell at last."""
+    def write_trade_if_in_asset_map(ts, suggested_price, action, reason):
+        """
+        Writes a trade if we find the exact timestamp in asset_map. 
+        Otherwise skip or do interpolation logic if needed.
+        """
+        if ts in asset_map:
+            actual_price = asset_map[ts]
+            write_trade(trades_path, ts, action, actual_price, reason)
+
+    def close_segment(segment_list, forced_reason_end=None):
+        """
+        Closes a segment by:
+          - Checking slope/acc on the first timestamp.
+          - Checking local max/min skip logic.
+          - Buying at the first candle (with upstart/downstart or tempstart).
+          - Selling at the last candle (with forced_reason_end or reason_end).
+        """
         if not segment_list:
             return
 
         first_ts, first_price = segment_list[0]
 
-        # --- Slope check ---
+        # Slope check
         slope = slope_map.get(first_ts, None)
         if slope is None:
             return
 
         if is_up:
-            # For upstart, need slope > min_steepness
+            # upstart => slope > min_steepness
             if slope <= min_steepness:
                 return
         else:
-            # For downstart, need slope < -min_steepness
+            # downstart => slope < -min_steepness
             if slope >= -min_steepness:
                 return
 
-        # --- Acceleration check ---
+        # Acceleration check
         acceleration = acceleration_map.get(first_ts, None)
         if (acceleration is None) or (abs(acceleration) <= min_acceleration):
-            return  # Acceleration not high enough, skip
+            return
 
-        # --- Local max/min check ---
+        # Local max/min check
         if is_up:
+            # skip if it's a local max
             if is_local_maximum(first_ts, asset_map, sorted_ts):
                 return
         else:
+            # skip if it's a local min
             if is_local_minimum(first_ts, asset_map, sorted_ts):
                 return
 
-        # --- Check official trade age ---
-        # If the first_ts is within MIN_OFFICIAL_TRADE_AGE minutes of max_timestamp,
-        # we use the "tempstart" reason instead of the normal reason_start.
+        # Decide if start is tempstart or normal
         if max_timestamp is not None:
             age_seconds = max_timestamp - first_ts
             if age_seconds < (MIN_OFFICIAL_TRADE_AGE * 60):
@@ -248,88 +285,79 @@ def parse_poly_file(
         else:
             chosen_reason_start = reason_start
 
-        # Place the buy
+        # Place BUY at first candle
         write_trade_if_in_asset_map(first_ts, first_price, "buy", chosen_reason_start)
 
-        # Place the sell at the last candle of the segment
+        # Place SELL at last candle
         if len(segment_list) > 1:
             last_ts, last_price = segment_list[-1]
-            write_trade_if_in_asset_map(last_ts, last_price, "sell", reason_end)
+            # Use forced_reason_end if provided, else the normal reason_end
+            sell_reason = forced_reason_end if forced_reason_end else reason_end
+            write_trade_if_in_asset_map(last_ts, last_price, "sell", sell_reason)
 
-    def write_trade_if_in_asset_map(ts, suggested_price, action, reason):
-        """
-        Writes a trade if we find the exact timestamp in asset_map. 
-        Otherwise, skip or implement interpolation logic if needed.
-        """
-        if ts in asset_map:
-            actual_price = asset_map[ts]
-            write_trade(trades_path, ts, action, actual_price, reason)
+    # --------------------------------------------------------------------------
+    # Parse the lines
+    # --------------------------------------------------------------------------
+    for line in all_lines:
+        line = line.strip()
+        if not line:
+            continue
+        parts = line.split(',')
+        if len(parts) != 2:
+            continue
+
+        try:
+            ts = int(float(parts[0]))
+        except ValueError:
+            continue
+
+        price_str = parts[1]
+        if price_str == '---':
+            # Break this segment
+            if segment:
+                close_segment(segment, forced_reason_end=reason_end)
+                segment = []
         else:
-            # If you need interpolation, place your interpolation logic here.
-            pass
-
-    with open(poly_path, 'r') as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            parts = line.split(',')
-            if len(parts) != 2:
-                continue
-
-            # Extract timestamp
             try:
-                ts = int(float(parts[0]))
+                price_val = float(price_str)
+                segment.append((ts, price_val))
             except ValueError:
-                continue  # Skip malformed line
+                pass
 
-            # Check if price is numeric or '---'
-            price_str = parts[1]
-            if price_str == '---':
-                # This breaks the current segment
-                if segment:
-                    close_segment(segment)
-                    segment = []
-            else:
-                # Valid price
-                try:
-                    price_val = float(price_str)
-                    segment.append((ts, price_val))
-                except ValueError:
-                    pass
-
-    # End of file: if there's a segment still open, close it
+    # --------------------------------------------------------------------------
+    # If there's a remaining segment, close it with final_sell_reason
+    # --------------------------------------------------------------------------
     if segment:
-        close_segment(segment)
+        close_segment(segment, forced_reason_end=final_sell_reason)
 
-##############################################################################
+# ------------------------------------------------------------------------------
 # 5. Main logic
-##############################################################################
+# ------------------------------------------------------------------------------
 def main():
-    # 5a. Read the asset data
+    # Read the asset data
     if not os.path.exists(asset_file):
         raise FileNotFoundError(f"Asset file not found: {asset_file}")
     asset_map = read_asset_file(asset_file)
 
-    # 5b. Read the linreg slopes
+    # Read the linreg slopes
     if not os.path.exists(LINREG_SLOPE_FILE):
         raise FileNotFoundError(f"Slope file not found: {LINREG_SLOPE_FILE}")
     slope_map = read_linreg_slopes(LINREG_SLOPE_FILE)
 
-    # 5c. Read the acceleration data
+    # Read the acceleration data
     if not os.path.exists(polyacc_file):
         raise FileNotFoundError(f"Acceleration file not found: {polyacc_file}")
     acceleration_map = read_acceleration_file(polyacc_file)
 
-    # 5d. Clear the trades file
+    # Clear the trades file
     initialize_trades_file(trades_file)
 
-    # 5e. We'll get the maximum timestamp in asset_map
+    # Determine the maximum timestamp in our asset_map
     max_ts = max(asset_map.keys())
 
-    # 5f. Parse polyup => for each contiguous numeric segment:
+    # Parse polyup
     parse_poly_file(
-        polyup_file,
+        poly_path=polyup_file,
         asset_map=asset_map,
         slope_map=slope_map,
         acceleration_map=acceleration_map,
@@ -342,9 +370,9 @@ def main():
         max_timestamp=max_ts
     )
 
-    # 5g. Parse polydown => for each contiguous numeric segment:
+    # Parse polydown
     parse_poly_file(
-        polydown_file,
+        poly_path=polydown_file,
         asset_map=asset_map,
         slope_map=slope_map,
         acceleration_map=acceleration_map,
