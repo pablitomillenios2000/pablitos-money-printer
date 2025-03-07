@@ -1,11 +1,16 @@
 {
     "key": "",
     "secret": "",
-    "pair":"BTCUSDC",
+    "pair":"BTCUSDT",
     "exchange":"Binance",
+    "investment": 1330,
+    "invest_all": "True",
+    "margin": 16,
     "number_sim_orders":2,
     "account_shared_x":"1",
-    "input_file": "../assets/btcusdc-realtime.csv",
-    "start_date": "2025-02-25 09:00:00", //"2021-01-01 14:00:00",
-    "end_date": "2025-02-25 18:00:00", //"2021-11-20",
+    "input_file": "../assets/btcusdt-realtime.csv",
+    "start_date": "2025-03-05 00:00:01", //"2021-01-01 14:00:00",
+    "end_date": "2025-03-07 23:25:00", //"2025-03-06 19:48:00",
 }
+
+// 18:30 on the graph is 17:30 in the json file

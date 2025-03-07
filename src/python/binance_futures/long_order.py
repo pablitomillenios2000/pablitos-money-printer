@@ -40,40 +40,36 @@ except Exception as e:
     print(f"Error fetching ticker price: {e}")
     exit()
 
+# Query the current USDT balance before placing the order
+try:
+    futures_balances = client.futures_account_balance()
+    usdt_balance_entry = next(item for item in futures_balances if item["asset"] == "USDT")
+    available_balance = float(usdt_balance_entry["availableBalance"])
+except StopIteration:
+    print("USDT asset not found in your futures account balance.")
+    exit()
+except Exception as e:
+    print(f"Error retrieving USDT balance: {e}")
+    exit()
+
+# Log the available USDT balance to the output file
+with open(output_file, "a") as f:
+    f.write(f"{datetime.now(timezone.utc)} - Available USDT Balance before order: {available_balance}\n")
+
 # Determine if we're investing all available USDT
 invest_all_str = str(invest_all).strip().lower()
 
 if invest_all_str == "true":
-    try:
-        # Get futures balances
-        futures_balances = client.futures_account_balance()
-        
-        # Find the USDT entry in the balance list
-        usdt_balance = next(item for item in futures_balances if item["asset"] == "USDT")
-        
-        # Use "availableBalance" for the portion of your balance not in active positions
-        available_balance = float(usdt_balance["availableBalance"])
-        
-        if available_balance <= 0:
-            print("No available USDT balance to invest.")
-            exit()
-        
-        # Calculate quantity based on all available balance * leverage
-        raw_quantity = (available_balance * leverage) / price
-        # Apply a 3% reduction as a safety buffer to account for fees or minor fluctuations
-        adjusted_quantity = round(raw_quantity * 0.97, 3)
-        print(f"Investing all: {available_balance} USDT at leverage {leverage}, adjusted quantity = {adjusted_quantity}")
-        quantity = adjusted_quantity
-    except StopIteration:
-        print("USDT asset not found in your futures account balance.")
+    if available_balance <= 0:
+        print("No available USDT balance to invest.")
         exit()
-    except KeyError as e:
-        print(f"KeyError: {e} - Check the structure of client.futures_account_balance() response.")
-        print("Full response:", futures_balances)
-        exit()
-    except Exception as e:
-        print(f"Error computing 'invest all' balance: {e}")
-        exit()
+    
+    # Calculate quantity based on all available balance * leverage
+    raw_quantity = (available_balance * leverage) / price
+    # Apply a 3% reduction as a safety buffer to account for fees or minor fluctuations
+    adjusted_quantity = round(raw_quantity * 0.97, 3)
+    print(f"Investing all: {available_balance} USDT at leverage {leverage}, adjusted quantity = {adjusted_quantity}")
+    quantity = adjusted_quantity
 else:
     # Use fixed investment from config if not investing all available funds
     quantity = round(investment / price, 3)
