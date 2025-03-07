@@ -49,6 +49,7 @@ try:
         side=Client.SIDE_BUY,
         type=Client.ORDER_TYPE_MARKET,
         quantity=quantity,
+        newOrderRespType='RESULT'  # or 'FULL' if your API version supports it
     )
     
     # Log order details
