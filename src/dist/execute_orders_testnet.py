@@ -152,10 +152,20 @@ if __name__ == "__main__":
     if not trades:
         print("No trades to execute.")
     else:
-        last_trade = trades[-1]
+        # Check if the last trade has strategy "tempend"
+        if trades[-1][3] == "tempend":
+            # If so, use the trade before it if available
+            if len(trades) > 1:
+                last_trade = trades[-2]
+            else:
+                print("No trades to execute.")
+                exit(0)
+        else:
+            last_trade = trades[-1]
+
         last_trade_timestamp = last_trade[0]
 
-        # If the last timestamp in the JSON equals the last timestamp in trades.txt, do nothing.
+        # If the last timestamp in the JSON equals the last trade timestamp, do nothing.
         if last_timestamp is not None and last_timestamp == last_trade_timestamp:
             print("No new trades to execute.")
         else:
