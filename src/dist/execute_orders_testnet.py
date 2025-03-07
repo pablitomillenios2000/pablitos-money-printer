@@ -66,6 +66,26 @@ def write_last_timestamp(file_path, timestamp):
         json.dump(data, file, indent=4)
 
 # --------------------------------------------------- #
+#   Function to Update the Trade Count in Notes       #
+# --------------------------------------------------- #
+
+def update_trade_count(file_path, count):
+    """
+    Updates the "number_of_trades" field in the JSON file with the provided count.
+    
+    Args:
+        file_path (str): Path to the JSON file.
+        count (int): The current number of trades.
+    """
+    data = {}
+    if os.path.exists(file_path):
+        with open(file_path, 'r') as file:
+            data = json5.load(file)
+    data["number_of_trades"] = count
+    with open(file_path, 'w') as file:
+        json.dump(data, file, indent=4)
+
+# --------------------------------------------------- #
 #   Function to Read Trades from a File               #
 #   (updated to handle four fields per trade)         #
 # --------------------------------------------------- #
@@ -97,7 +117,7 @@ def read_trades(file_path):
     return trades
 
 # --------------------------------------------------- #
-#   Function to Execute a Trade Based on Strategy      #
+#   Function to Execute a Trade Based on Strategy     #
 # --------------------------------------------------- #
 
 def execute_trade(trade):
@@ -137,7 +157,8 @@ if __name__ == "__main__":
         default_data = {
             "last_polyupacc_time": 1,
             "last_polydownacc_time": 1,
-            "last_order_time": 1
+            "last_order_time": 1,
+            "number_of_trades": 0
         }
         with open(last_timestamp_file, 'w') as file:
             json.dump(default_data, file, indent=4)
@@ -148,6 +169,30 @@ if __name__ == "__main__":
 
     last_timestamp = read_last_timestamp(last_timestamp_file)
     trades = read_trades(trades_file)
+
+    # ------------------------ #
+    #   Compare Trade Counts   #
+    # ------------------------ #
+
+    current_trade_count = len(trades)
+    # Load previous number of trades from notes.json
+    notes_data = {}
+    if os.path.exists(last_timestamp_file):
+        with open(last_timestamp_file, 'r') as file:
+            notes_data = json5.load(file)
+    previous_trade_count = notes_data.get("number_of_trades", 0)
+
+    # If the current number of trades is less than the previous count, execute the close orders program once.
+    if current_trade_count < previous_trade_count:
+        print("Number of trades has reduced. Executing close orders program.")
+        os.system(f"sudo python3 {close_all_orders_file}")
+    
+    # Update the number of trades in the notes file
+    update_trade_count(last_timestamp_file, current_trade_count)
+
+    # ------------------------ #
+    #   Trade Execution Logic  #
+    # ------------------------ #
 
     if not trades:
         print("No trades to execute.")
