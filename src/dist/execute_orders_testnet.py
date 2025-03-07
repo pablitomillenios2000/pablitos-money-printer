@@ -98,22 +98,31 @@ def read_trades(file_path):
     return trades
 
 # --------------------------------------------------- #
-#   Function to Execute a Trade Based on Action       #
+#   Function to Execute a Trade Based on Strategy      #
 # --------------------------------------------------- #
 
 def execute_trade(trade):
     """
-    Executes a trade by running the corresponding Python script.
+    Executes a trade by running the corresponding Python script based on the trade's strategy.
     
-    Depending on the 'action' field of the trade tuple, it will run either the
-    long_order.py (buy) or short_order.py (sell) script.
+    - If strategy is "upstart": Executes the long trades script (buy_order_file).
+    - If strategy is "downstart": Executes the short trades script (sell_order_file).
+    - If strategy is "upend" or "downend": Executes the close_all orders script (close_all_orders_file).
     
     Args:
         trade (tuple): A tuple containing (timestamp, action, price, strategy).
     """
     timestamp, action, price, strategy = trade
-    print(f"Executing {action} trade at price {price} with strategy {strategy} at timestamp {timestamp}")
-    script_path = buy_order_file if action == 'buy' else sell_order_file
+    if strategy == "upstart":
+        script_path = buy_order_file
+    elif strategy == "downstart":
+        script_path = sell_order_file
+    elif strategy in ("upend", "downend"):
+        script_path = close_all_orders_file
+    else:
+        print(f"Unknown strategy: {strategy}. No action taken.")
+        return
+    print(f"Executing trade: {strategy} at timestamp {timestamp}, price {price}")
     os.system(f"python3 {script_path}")
 
 # --------------------------------------------------- #
@@ -126,6 +135,7 @@ if __name__ == "__main__":
 
     buy_order_file = f"../python/{exchange}/long_order.py"
     sell_order_file = f"../python/{exchange}/short_order.py"
+    close_all_orders_file = f"../python/{exchange}/close_positions.py"  # Fixed missing quote
 
     last_timestamp = read_last_timestamp(last_timestamp_file)
     trades = read_trades(trades_file)
@@ -136,8 +146,9 @@ if __name__ == "__main__":
         last_trade = trades[-1]
         last_trade_timestamp = last_trade[0]
 
-        if last_timestamp is None or last_timestamp < last_trade_timestamp:
+        # If the last timestamp in the JSON equals the last timestamp in trades.txt, do nothing.
+        if last_timestamp is not None and last_timestamp == last_trade_timestamp:
+            print("No new trades to execute.")
+        else:
             execute_trade(last_trade)
             write_last_timestamp(last_timestamp_file, last_trade_timestamp)
-        else:
-            print("No new trades to execute.")

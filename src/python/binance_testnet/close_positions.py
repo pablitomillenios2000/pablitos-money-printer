@@ -8,8 +8,8 @@ import time
 ORDER_TYPE_MARKET = "MARKET"
 
 # Define paths
-config_file = "../../dist/apikey-crypto.json"
-output_file = "../../view/output/closes.txt"
+config_file = "apikey-crypto.json"
+output_file = "../view/output/orders.txt"
 
 # Ensure the output directory exists
 os.makedirs(os.path.dirname(output_file), exist_ok=True)
