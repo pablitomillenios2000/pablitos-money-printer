@@ -40,13 +40,13 @@ except Exception as e:
     exit()
 
 # Calculate order quantity
-quantity = round(investment / price, 3)  # Adjust rounding as per Binance requirements
+quantity = round(investment / price, 3)  # Adjust rounding as needed per Binance requirements
 
-# Place a market buy order
+# Place a market sell order (short trade)
 try:
     order = client.futures_create_order(
         symbol=pair,
-        side=Client.SIDE_BUY,
+        side=Client.SIDE_SELL,
         type=Client.ORDER_TYPE_MARKET,
         quantity=quantity,
         newOrderRespType='RESULT'  # or 'FULL' if your API version supports it
@@ -54,7 +54,7 @@ try:
     
     # Log order details
     with open(output_file, "a") as f:
-        f.write(f"{datetime.now(timezone.utc)} - Order: {order}\n")
-    print("Order placed successfully:", order)
+        f.write(f"{datetime.now(timezone.utc)} - Short Order: {order}\n")
+    print("Short order placed successfully:", order)
 except Exception as e:
-    print(f"Error placing order: {e}")
+    print(f"Error placing short order: {e}")
