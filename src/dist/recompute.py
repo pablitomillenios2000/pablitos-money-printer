@@ -9,7 +9,6 @@ start_time = time.time()
 
 command = ["sudo", "cp", "-r", "../view/*", "/usr/share/caddy"]
 
-
 # Remove all .txt files
 # os.system("rm ../view/output/*.txt")
 # dont do this because you need the last_timestamp.txt
@@ -36,7 +35,7 @@ os.system("python3 ./compute_trades_complex.py")
 #os.system("python3 ./compute_final_portfolio.py")
 os.system("bash ./compress_all.sh")
 
-# Execute the command
+# Execute the command to remove old files and copy new ones
 try:
     subprocess.run("sudo rm -rf /usr/share/caddy/*", shell=True, check=True)
     subprocess.run("sudo cp -r ../view/* /usr/share/caddy", shell=True, check=True)
@@ -51,3 +50,6 @@ end_time = time.time()
 # Calculate elapsed time
 elapsed_time = end_time - start_time
 print(f"Time taken for execution: {elapsed_time:.2f} seconds")
+
+# Print human readable timestamp
+print("Execution finished at:", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
