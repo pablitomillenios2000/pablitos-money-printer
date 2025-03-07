@@ -62,7 +62,6 @@ def write_last_timestamp(file_path, timestamp):
         with open(file_path, 'r') as file:
             data = json5.load(file)
     data["last_order_time"] = float(timestamp)
-    # Use the standard json module to write strict JSON with double quotes for keys.
     with open(file_path, 'w') as file:
         json.dump(data, file, indent=4)
 
@@ -75,7 +74,7 @@ def read_trades(file_path):
     """
     Reads trades from a file and returns them as a list of tuples.
     
-    Each line in the file is now expected to have four comma-separated values:
+    Each line in the file is expected to have four comma-separated values:
     timestamp, action, price, and strategy.
     
     Args:
@@ -133,9 +132,19 @@ if __name__ == "__main__":
     last_timestamp_file = "../view/output/notes.json"
     trades_file = "../view/output/trades.txt"
 
+    # If notes.json does not exist, create it with default content.
+    if not os.path.exists(last_timestamp_file):
+        default_data = {
+            "last_polyupacc_time": 1,
+            "last_polydownacc_time": 1,
+            "last_order_time": 1
+        }
+        with open(last_timestamp_file, 'w') as file:
+            json.dump(default_data, file, indent=4)
+
     buy_order_file = f"../python/{exchange}/long_order.py"
     sell_order_file = f"../python/{exchange}/short_order.py"
-    close_all_orders_file = f"../python/{exchange}/close_positions.py"  # Fixed missing quote
+    close_all_orders_file = f"../python/{exchange}/close_positions.py"
 
     last_timestamp = read_last_timestamp(last_timestamp_file)
     trades = read_trades(trades_file)
