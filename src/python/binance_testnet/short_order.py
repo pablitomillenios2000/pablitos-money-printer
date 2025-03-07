@@ -6,8 +6,9 @@ from tqdm import tqdm
 from collections import defaultdict
 
 # Define paths
-config_file = "../../dist/apikey-crypto.json"
-output_file = "../../view/output/orders.txt"
+# relative to the path of execute_orders_testnet.py
+config_file = "apikey-crypto.json"
+output_file = "../view/output/orders.txt"
 
 # Ensure the output directory exists
 os.makedirs(os.path.dirname(output_file), exist_ok=True)
