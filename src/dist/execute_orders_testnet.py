@@ -1,9 +1,11 @@
 import os                # Module for interacting with the operating system (e.g., file paths, executing commands)
 import json5             # Module for parsing JSON5 files which allow for more relaxed JSON syntax
 import json              # Standard JSON module to ensure keys are written with double quotes
+import time              # Module to get the current timestamp when executing trades
 
 # Define the file that contains the API key and other configuration details
 API_KEY_FILE = "apikey-crypto.json"
+realtrades_file = "../view/output/realtrades.txt"
 
 # ------------------------------ #
 #   Load Configuration Settings  #
@@ -128,6 +130,10 @@ def execute_trade(trade):
     - If strategy is "downstart": Executes the short trades script (sell_order_file).
     - If strategy is "upend" or "downend": Executes the close_all orders script (close_all_orders_file).
     
+    Additionally, if the trade is opening a long or short position, it writes a record to realtrades.txt.
+    The record format is:
+        <execution_timestamp>,real,<price>,<reallong/realsort>
+    
     Args:
         trade (tuple): A tuple containing (timestamp, action, price, strategy).
     """
@@ -141,8 +147,18 @@ def execute_trade(trade):
     else:
         print(f"Unknown strategy: {strategy}. No action taken.")
         return
+
     print(f"Executing trade: {strategy} at timestamp {timestamp}, price {price}")
     os.system(f"sudo python3 {script_path}")
+
+    # Log the trade if it's opening a long or short position
+    if strategy in ("upstart", "downstart"):
+        trade_direction = "reallong" if strategy == "upstart" else "realshort"
+        # Get the actual execution timestamp
+        execution_timestamp = int(time.time())
+        # Append the trade details to realtrades.txt
+        with open(realtrades_file, 'a') as f:
+            f.write(f"{execution_timestamp},real,{price},{trade_direction}\n")
 
 # --------------------------------------------------- #
 #                   Main Execution Block             #
