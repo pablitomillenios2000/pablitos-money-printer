@@ -385,7 +385,43 @@ def main():
         max_timestamp=max_ts
     )
 
+    # Finally, sort the trades file in chronological order
+    sort_trades_chronologically(trades_file)
+
     print("Finished writing buy and sell trades.")
+
+# ------------------------------------------------------------------------------
+# 6. Final function to sort trades chronologically
+# ------------------------------------------------------------------------------
+def sort_trades_chronologically(path):
+    """
+    Reads the trades from the given file, sorts them by timestamp,
+    and rewrites them in ascending order of timestamp.
+    """
+    trades = []
+    with open(path, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            parts = line.split(',')
+            if len(parts) == 4:
+                ts_str, action, price_str, reason = parts
+                try:
+                    ts = int(ts_str)
+                    price = float(price_str)
+                    trades.append((ts, action, price, reason))
+                except ValueError:
+                    pass
+    
+    # Sort the list by timestamp
+    trades.sort(key=lambda x: x[0])
+
+    # Rewrite the file in sorted order
+    with open(path, 'w') as f:
+        for record in trades:
+            f.write(f"{record[0]},{record[1]},{record[2]},{record[3]}\n")
+
 
 if __name__ == "__main__":
     main()
