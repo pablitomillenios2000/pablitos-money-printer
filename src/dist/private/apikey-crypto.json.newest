@@ -2,7 +2,7 @@
     "key": "",
     "secret": "",
     "pair":"BTCUSDT",
-    "exchange":"Binance",
+    "exchange":"binance_testnet",
     "investment": 1330,
     "invest_all": "True",
     "margin": 16,
