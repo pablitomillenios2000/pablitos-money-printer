@@ -122,7 +122,7 @@ def execute_trade(trade):
         print(f"Unknown strategy: {strategy}. No action taken.")
         return
     print(f"Executing trade: {strategy} at timestamp {timestamp}, price {price}")
-    os.system(f"python3 {script_path}")
+    os.system(f"sudo python3 {script_path}")
 
 # --------------------------------------------------- #
 #                   Main Execution Block             #
