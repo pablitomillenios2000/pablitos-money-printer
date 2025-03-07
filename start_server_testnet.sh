@@ -51,7 +51,7 @@ echo ""
 
 echo "starting the recompute bucle"
 cd ./src/dist
-nohup ./bucle.py > ../view/bucle.log 2>&1 &
+nohup ./bucle_testnet.py > ../view/bucle.log 2>&1 &
 
 echo ""
 
