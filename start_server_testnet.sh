@@ -59,4 +59,7 @@ sudo python3 ./recompute.py
 
 echo ""
 
+echo "check /src/view/bucle.log for success"
+
 echo "Server start has been triggered. Please load localhost now"
+
